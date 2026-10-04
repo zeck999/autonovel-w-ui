@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autonovel — Autonomous Fiction Creator</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div id="app">
+    <header class="app-header">
+        <a href="#/dashboard" class="brand">
+            <h1>Autonovel</h1>
+            <span>Autonomous Fiction Harness</span>
+        </a>
+
+        <nav class="main-nav">
+            <a href="#/dashboard">Dashboard</a>
+            <a href="#/projects">Projets</a>
+            <a href="#/universes">Univers</a>
+            <a href="#/branches">Versions / Branches</a>
+            <a href="#/pipeline">Pipeline</a>
+        </nav>
+
+        <div class="header-actions">
+            <div id="connection-badge" class="connection-badge online">Connecté</div>
+            <button class="btn btn-sm" id="inspector-toggle">Inspection</button>
+        </div>
+    </header>
+
+    <main class="content-container" id="app-content">
+        <!-- Dynamic Views Loaded Here -->
+    </main>
+
+    <!-- Inspector Drawer -->
+    <div id="inspector-drawer" class="inspector-drawer">
+        <div class="inspector-header">
+            <div class="inspector-title">
+                <span>Volet d'Inspection & Logs</span>
+                <span id="inspector-status-dot">●</span>
+            </div>
+            <button class="btn btn-sm" id="inspector-close">Fermer</button>
+        </div>
+        <div class="inspector-body">
+            <div id="inspector-meta" style="margin-bottom: 1rem; border-bottom: 1px solid #2a2820; padding-bottom: 0.75rem;">
+                <!-- Metadata loaded here -->
+            </div>
+            <div id="inspector-logs">
+                <!-- Logs loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { store } from './js/store.js';
+    import { initRouter } from './js/router.js';
+    import { initInspector } from './js/inspector.js';
+
+    window.addEventListener('DOMContentLoaded', async () => {
+        initRouter();
+        initInspector();
+        await store.init();
+
+        // Update connection status badge
+        store.subscribe(state => {
+            const badge = document.getElementById('connection-badge');
+            if (badge) {
+                if (state.isOnline) {
+                    badge.className = 'connection-badge online';
+                    badge.textContent = 'Connecté';
+                } else {
+                    badge.className = 'connection-badge offline';
+                    badge.textContent = 'Hors connexion';
+                }
+            }
+        });
+    });
+</script>
+
+</body>
+</html>
