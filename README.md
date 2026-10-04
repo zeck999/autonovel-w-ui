@@ -28,6 +28,9 @@ uv run python seed.py
 
 # Run the full pipeline
 uv run python run_pipeline.py --from-scratch
+
+# Or start the Web UI / FastAPI backend server
+uv run uvicorn src.api:app --reload --port 8000
 ```
 
 ---
@@ -136,6 +139,13 @@ TEMPLATES (filled per-novel on a branch):
   canon.md               — Hard facts database
   MYSTERY.md             — Central mystery (author-only)
   state.json             — Pipeline state tracker
+
+  BACKEND & WEB API (`src/`):
+    src/projects.py      — Multi-project isolation & management
+    src/universes.py     — Shared universes & lore inheritance
+    src/versioning.py    — Narrative branches & revision history
+    src/pipeline_adapter.py — Pipeline execution adapter
+    src/api.py           — FastAPI REST application
 
 TYPESETTING:
   typeset/novel.tex      — LaTeX template (EB Garamond, trade paperback)

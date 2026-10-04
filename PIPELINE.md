@@ -65,7 +65,14 @@ TOOLS (the pipeline machinery):
     typeset/build_tex.py -- chapters/*.md → chapters_content.tex
 
   Orchestrator:
-    run_pipeline.py      -- NEW: fully automated pipeline runner
+    run_pipeline.py      -- fully automated pipeline runner
+
+  Web UI & Modular Backend (`src/`):
+    src/projects.py      -- multi-project isolation and management
+    src/universes.py     -- shared universes and lore inheritance
+    src/versioning.py    -- narrative branches and revision history
+    src/pipeline_adapter.py -- pipeline execution bridge
+    src/api.py           -- FastAPI REST endpoints for Web UI
 
 CONFIG:
   .env.example           -- API key template

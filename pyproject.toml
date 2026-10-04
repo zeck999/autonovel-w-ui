@@ -1,9 +1,16 @@
 [project]
 name = "autonovel"
 version = "0.1.0"
-description = "Add your description here"
+description = "Autonovel with Web UI, Multi-project, Shared Universes, and Versioning"
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.34.0",
+    "pydantic>=2.10.0",
     "httpx>=0.28.1",
     "python-dotenv>=1.2.2",
+    "pytest>=8.0.0",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
