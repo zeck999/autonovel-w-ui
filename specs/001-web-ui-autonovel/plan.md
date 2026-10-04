@@ -4,7 +4,9 @@
 
 ## Résumé
 
-Ajout d'une **interface web interactive réelle** (HTML/CSS/JS autonome) servie par le serveur FastAPI existant à la racine `/`. Elle repose sur le back-office déjà implémenté et testé (`src/api.py` + modules `projects/universes/versioning/pipeline_adapter`) et ne le remplace pas.
+Le **back-office API FastAPI** (`src/api.py` + modules `projects`, `universes`, `versioning`, `pipeline_adapter`) et ses tests unitaires (`tests/test_api.py`, etc.) sont **pleinement implémentés, testés et validés**. 
+
+Ce plan couvre également la spécification et l'architecture de la couche **Web UI interactive** (HTML/CSS/JS autonome / SPA) destinée à être servie par FastAPI pour exploiter ce back-office.
 
 Objectifs prioritaires :
 

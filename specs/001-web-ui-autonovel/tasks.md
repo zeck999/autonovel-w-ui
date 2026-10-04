@@ -13,45 +13,45 @@ description: "Tâches pour l'implémentation de la VRAIE Web UI HTML/CSS/JS inte
 ## Phase 0 : Rétrocompatibilité Back-office & Squelette UI (Fondations)
 
 - [x] T001 [US1] Valider le back-office existant via `pytest tests/` (garantir les contrats `/api/...`).
-- [x] T002 Créer l'arborescence `ui/` et le fichier squelette `ui/index.html` (doctype, viewport, polices et styles de base).
-- [x] T003 Ajouter les routes statiques et SPA dans `src/api.py` (`@app.get("/")`, `StaticFiles` pour `ui/css` et `ui/js`, et catch-all `/{path:path}` respectant l'ordre avant `/api/*`).
+- [ ] T002 Créer l'arborescence `ui/` et le fichier squelette `ui/index.html` (doctype, viewport, polices et styles de base).
+- [ ] T003 Ajouter les routes statiques et SPA dans `src/api.py` (`@app.get("/")`, `StaticFiles` pour `ui/css` et `ui/js`, et catch-all `/{path:path}` respectant l'ordre avant `/api/*`).
 
 ---
 
 ## Phase 1 : Infrastructure Frontend & Dashboard (Priorité : P1) 🎯 MVP
 
-- [x] T011 [P] [US1] Implémenter la couche `ui/js/api.js` (`fetch()` avec gestion d'erreurs, états de connexion, `AbortController`).
-- [x] T012 [P] [US1] Implémenter le store global (`ui/js/store.js`) et le routeur SPA (`ui/js/router.js`, support `/#/projects`, `/#/universes`, `/#/branches`, `/#/pipeline`).
-- [x] T013 [US1] Implémenter le thème global (`ui/css/style.css`) aux couleurs d'Autonovel (`#0a0a08`, `#e8e4db`, `#daa548`, EB Garamond / Bebas Neue).
-- [x] T014 [US1] Créer la vue Dashboard (`ui/js/views/dashboard.js`) affichant la liste des projets récents, le statut global du pipeline et les actions rapides.
+- [ ] T011 [P] [US1] Implémenter la couche `ui/js/api.js` (`fetch()` avec gestion d'erreurs, états de connexion, `AbortController`).
+- [ ] T012 [P] [US1] Implémenter le store global (`ui/js/store.js`) et le routeur SPA (`ui/js/router.js`, support `/#/projects`, `/#/universes`, `/#/branches`, `/#/pipeline`).
+- [ ] T013 [US1] Implémenter le thème global (`ui/css/style.css`) aux couleurs d'Autonovel (`#0a0a08`, `#e8e4db`, `#daa548`, EB Garamond / Bebas Neue).
+- [ ] T014 [US1] Créer la vue Dashboard (`ui/js/views/dashboard.js`) affichant la liste des projets récents, le statut global du pipeline et les actions rapides.
 
 ---
 
 ## Phase 2 : Gestion des Projets & Univers Partagés (Priorité : P1 / P2)
 
-- [x] T021 [US1] Créer la vue Projets (`ui/js/views/projects.js`) pour créer un projet (formulaire nom/concept/univers), basculer et supprimer (`DELETE /api/projects/{id}`).
-- [x] T022 [US2] Créer la vue Univers (`ui/js/views/universes.js`) pour lister les univers, afficher le nombre de projets liés, et permettre de rattacher un projet à un univers existant.
+- [ ] T021 [US1] Créer la vue Projets (`ui/js/views/projects.js`) pour créer un projet (formulaire nom/concept/univers), basculer et supprimer (`DELETE /api/projects/{id}`).
+- [ ] T022 [US2] Créer la vue Univers (`ui/js/views/universes.js`) pour lister les univers, afficher le nombre de projets liés, et permettre de rattacher un projet à un univers existant.
 
 ---
 
 ## Phase 3 : Versioning & Branches Narratives (Priorité : P3)
 
-- [x] T031 [US3] Créer la vue Branches (`ui/js/views/branches.js`) pour lister les branches (`/api/versioning/branches`), en créer une, basculer (`/api/versioning/switch`), et afficher l'historique des révisions et des scores (`/api/versioning/history`).
+- [ ] T031 [US3] Créer la vue Branches (`ui/js/views/branches.js`) pour lister les branches (`/api/versioning/branches`), en créer une, basculer (`/api/versioning/switch`), et afficher l'historique des révisions et des scores (`/api/versioning/history`).
 
 ---
 
 ## Phase 4 : Pipeline, Monitoring & Volet d'Inspection (Priorité : P1 & P5)
 
-- [x] T041 [US1] Créer la vue Pipeline & Monitoring (`ui/js/views/pipeline.js`) pour exécuter une phase (`POST /api/pipeline/run`), afficher l'état courant et lancer des évaluations (`POST /api/pipeline/evaluate`).
-- [x] T042 [US5] Implémenter le volet d'inspection et de logs rétractable (`ui/js/inspector.js`), accessible par bouton toggle ou raccourci (`Alt+I`/`Esc`), avec polling asynchrone, mise en évidence des erreurs et masquage des secrets.
+- [ ] T041 [US1] Créer la vue Pipeline & Monitoring (`ui/js/views/pipeline.js`) pour exécuter une phase (`POST /api/pipeline/run`), afficher l'état courant et lancer des évaluations (`POST /api/pipeline/evaluate`).
+- [ ] T042 [US5] Implémenter le volet d'inspection et de logs rétractable (`ui/js/inspector.js`), accessible par bouton toggle ou raccourci (`Alt+I`/`Esc`), avec polling asynchrone, mise en évidence des erreurs et masquage des secrets.
 
 ---
 
 ## Phase 5 : Polissage, Responsive & Documentation
 
-- [x] T051 [P] Ajuster le design responsive (mobile ≤ 480 px : navigation en drawer, volet d'inspection en modal).
-- [x] T052 Valider le parcours complet (SC-001..SC-006) en local (`uv run uvicorn src.api:app --port 8000`) et vérifier que tous les tests `pytest tests/` restent PASS.
-- [x] T053 Mettre à jour `README.md` et `PIPELINE.md` pour documenter la nouvelle Web UI interactive.
+- [ ] T051 [P] Ajuster le design responsive (mobile ≤ 480 px : navigation en drawer, volet d'inspection en modal).
+- [ ] T052 Valider le parcours complet (SC-001..SC-006) en local (`uv run uvicorn src.api:app --port 8000`) et vérifier que tous les tests `pytest tests/` restent PASS.
+- [ ] T053 Mettre à jour `README.md` et `PIPELINE.md` pour documenter la nouvelle Web UI interactive.
 
 ---
 

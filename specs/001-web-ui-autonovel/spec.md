@@ -4,9 +4,9 @@
 
 **Créée** : 2026-10-04
 
-**Statut** : Validée (back-office API) / Specifiée (Web UI à implémenter)
+**Statut** : Validée (Back-office API implémenté et testé) / Spécifiée (Client Web UI SPA prêt pour implémentation)
 
-**Entrée** : Demande utilisateur d'intégrer une interface web HTML/CSS/JS **interactive, autonome, progressive**, servie par FastAPI à la racine `/`, permettant aux humains de piloter le pipeline de création de roman autonome.
+**Entrée** : Intégration d'une interface web interactive HTML/CSS/JS autonome, servie par FastAPI à la racine `/` (ou en couche client), permettant de piloter le pipeline de création de roman autonome à partir du back-office validé.
 
 ---
 
