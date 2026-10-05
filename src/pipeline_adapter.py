@@ -35,7 +35,8 @@ def get_pipeline_status(project_id: Optional[str] = None) -> Dict:
     }
 
 def run_pipeline_phase(phase: str, project_id: Optional[str] = None, max_cycles: Optional[int] = None) -> Dict:
-    cmd = f"uv run python run_pipeline.py --phase {phase}"
+    script_path = BASE_DIR / "run_pipeline.py"
+    cmd = f"uv run python {script_path} --phase {phase}"
     if max_cycles is not None:
         cmd += f" --max-cycles {max_cycles}"
 
@@ -51,6 +52,9 @@ def run_pipeline_phase(phase: str, project_id: Optional[str] = None, max_cycles:
         status = get_pipeline_status(project_id)
         status["last_run_output"] = res.stdout[-500:] if res.stdout else ""
         status["last_run_returncode"] = res.returncode
+        status["returncode"] = res.returncode
+        if res.returncode != 0:
+            status["error"] = res.stderr[-500:] if res.stderr else f"Pipeline failed with return code {res.returncode}"
         return status
     except subprocess.TimeoutExpired:
         return {"error": "Pipeline phase timed out", "returncode": -1}
@@ -58,7 +62,8 @@ def run_pipeline_phase(phase: str, project_id: Optional[str] = None, max_cycles:
         return {"error": str(e), "returncode": -1}
 
 def evaluate_project(project_id: Optional[str] = None, chapter_num: Optional[int] = None) -> Dict:
-    cmd = "uv run python evaluate.py"
+    script_path = BASE_DIR / "evaluate.py"
+    cmd = f"uv run python {script_path}"
     if chapter_num is not None:
         cmd += f" --chapter={chapter_num}"
     else:
