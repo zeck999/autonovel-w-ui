@@ -1,0 +1,14 @@
+{
+  "id": "REQ-20261004194217",
+  "title": "start the fork adding web ui to the software and other feature",
+  "mode": "INIT",
+  "goal": "To be refined by the mode workflow",
+  "summary": "All completion gates satisfied.",
+  "status": "COMPLETED",
+  "createdAt": "2026-10-04T19:42:17.852Z",
+  "startSha": "d165f267a0ffd34f3b0a70a8a72ac38cb8e4a542",
+  "startStatus": [],
+  "startVersion": "0.1.0",
+  "completedAt": "2026-10-05T16:53:43.466Z",
+  "completionSha": "a1db37c25ccf02f441af084ef10661c5973c2094"
+}
