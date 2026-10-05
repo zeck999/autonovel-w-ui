@@ -1,0 +1,1 @@
+Les astronautes de la première base lunaire effectue régulièrement des explorations directe sur la lune.
