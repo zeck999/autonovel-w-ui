@@ -40,11 +40,13 @@ description: "Tâches pour l'implémentation de la VRAIE Web UI HTML/CSS/JS inte
 
 ---
 
-## Phase 4 : Pipeline, Monitoring & Volet d'Inspection (Priorité : P1 & P5)
+## Phase 4 : Pipeline, Monitoring, Logging Temps Réel & Mode Review-Only (Priorité : P1 & P5)
 
 - [x] T040 [US1] Corriger et valider la synchronisation multi-projet dans l'adaptateur de pipeline (`src/pipeline_adapter.py`) pour cibler correctement le répertoire projet (`projects/{project_id}`) et son état (`state.json`).
 - [x] T041 [US1] Créer la vue Pipeline & Monitoring (`ui/js/views/pipeline.js`) pour exécuter une phase (`POST /api/pipeline/run`), afficher l'état courant et lancer des évaluations (`POST /api/pipeline/evaluate`).
 - [x] T042 [US5] Implémenter le volet d'inspection et de logs rétractable (`ui/js/inspector.js`), accessible par bouton toggle ou raccourci (`Alt+I`/`Esc`), avec polling asynchrone, mise en évidence des erreurs et masquage des secrets.
+- [x] T043 [US1/US5] Acter et implémenter le **logging temps réel du pipeline** via polling asynchrone (`state.json` / logs) et affichage dynamique dans le volet d'inspection, avec coloration des erreurs/succès et protection des secrets.
+- [x] T044 [US1/US4] Acter et intégrer le **mode review-only** (phase de review et évaluation critique indépendante via `/api/pipeline/evaluate`) permettant l'audit littéraire sans modification destructive des chapitres.
 
 ---
 
@@ -58,8 +60,8 @@ description: "Tâches pour l'implémentation de la VRAIE Web UI HTML/CSS/JS inte
 ## Phase 6 : Polissage, Responsive & Documentation
 
 - [x] T061 [P] Ajuster le design responsive (mobile ≤ 480 px : navigation en drawer, volet d'inspection en modal).
-- [ ] T062 Valider le parcours complet (SC-001..SC-006) en local (`uv run uvicorn src.api:app --port 8000`) et vérifier que tous les tests `pytest tests/` restent PASS.
-- [ ] T063 Mettre à jour `README.md` et `PIPELINE.md` pour documenter la nouvelle Web UI interactive.
+- [x] T062 Valider le parcours complet (SC-001..SC-006) en local (`uv run uvicorn src.api:app --port 8000`) et vérifier que tous les tests `pytest tests/` restent PASS.
+- [x] T063 Mettre à jour `README.md`, `PIPELINE.md` et les artéfacts Spec Kit pour acter l'implémentation de la Web UI interactive, du logging temps réel du pipeline et du mode review-only.
 
 ---
 

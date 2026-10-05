@@ -117,6 +117,8 @@ L'utilisateur sélectionne un fichier de fondation ou de lore (`world.md`, `char
 - **FR-010** : L'interface DOIT être responsive (mobile ≤ 480px : menu en drawer, volet d'inspection en modal).
 - **FR-011** : L'API DOIT fournir des endpoints de lecture et écriture des fichiers de projet (`GET /api/projects/{id}/files/{filename}` et `PUT /api/projects/{id}/files/{filename}`) pour `world.md`, `characters.md`, `outline.md`, `canon.md`, etc.
 - **FR-012** : La Web UI DOIT intégrer une vue/onglet « Fondation & Lore » permettant de sélectionner, éditer et sauvegarder ces fichiers de manière fluide et asynchrone.
+- **FR-013** : Le système DOIT fournir un **logging temps réel du pipeline** via polling asynchrone et affichage dynamique des logs dans le volet d'inspection (`ui/js/inspector.js`), avec mise en évidence des erreurs et masquage des secrets.
+- **FR-014** : Le système DOIT supporter un **mode review-only** (via la phase de review et les endpoints d'évaluation critique `/api/pipeline/evaluate`) permettant l'audit littéraire et le scoring sans modification destructive des chapitres.
 
 ---
 
