@@ -44,7 +44,7 @@ description: "Tâches pour l'implémentation de la VRAIE Web UI HTML/CSS/JS inte
 
 ## Phase 4 : Pipeline, Monitoring, Logging Temps Réel & Mode Review-Only (Priorité : P1 & P5)
 
-- [x] T040 [US1] Corriger et valider la synchronisation multi-projet dans l'adaptateur de pipeline (`src/pipeline_adapter.py`) pour cibler correctement le répertoire projet (`projects/{project_id}`) et son état (`state.json`).
+- [x] T040 [US1] Corriger et valider la synchronisation multi-projet dans l'adaptateur de pipeline (`src/pipeline_adapter.py`) pour cibler correctement le répertoire projet (`projects/{project_id}`) et son état (`state.json`) — **Testé, validé et acté via `tests/test_pipeline.py`**.
 - [x] T041 [US1] Créer la vue Pipeline & Monitoring (`ui/js/views/pipeline.js`) pour exécuter une phase (`POST /api/pipeline/run`), afficher l'état courant et lancer des évaluations (`POST /api/pipeline/evaluate`).
 - [x] T042 [US5] Implémenter le volet d'inspection et de logs rétractable (`ui/js/inspector.js`), accessible par bouton toggle ou raccourci (`Alt+I`/`Esc`), avec polling asynchrone, mise en évidence des erreurs et masquage des secrets.
 - [x] T043 [US1/US5] Acter et implémenter le **logging temps réel du pipeline** via polling asynchrone (`state.json` / logs) et affichage dynamique dans le volet d'inspection, avec coloration des erreurs/succès et protection des secrets.
@@ -62,7 +62,7 @@ description: "Tâches pour l'implémentation de la VRAIE Web UI HTML/CSS/JS inte
 ## Phase 6 : Polissage, Responsive & Documentation
 
 - [x] T061 [P] Ajuster le design responsive (mobile ≤ 480 px : navigation en drawer, volet d'inspection en modal).
-- [x] T062 Valider le parcours complet (SC-001..SC-006) en local (`uv run uvicorn src.api:app --port 8000`) et vérifier que tous les tests `pytest tests/` restent PASS.
+- [x] T062 Valider le parcours complet (SC-001..SC-006) en local (`uv run uvicorn src.api:app --port 8000`) et vérifier que tous les tests `pytest tests/` (tests unitaires et d'intégration E2E) restent PASS — **Validé et acté**.
 - [x] T063 Mettre à jour `README.md`, `PIPELINE.md` et les artéfacts Spec Kit pour acter l'implémentation de la Web UI interactive, du logging temps réel du pipeline et du mode review-only.
 - [x] T064 Acter dans Spec Kit (`spec.md`, `plan.md`, `tasks.md`) le nettoyage complet du worktree, l'exclusion de `projects/`, et le **verrouillage strict du scope** (interdiction absolue de commit ou de manipulation sur les dossiers de projets générés non suivis).
 

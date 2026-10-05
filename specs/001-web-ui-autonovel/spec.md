@@ -4,7 +4,7 @@
 
 **Créée** : 2026-10-04
 
-**Statut** : Validé, accompli et acté au commit `90ab158` (Phases 0 à 6 implémentées, Web UI SPA interactive, endpoints fichiers et vue UI Fondation & Lore opérationnels, tests unitaires et validation validés)
+**Statut** : Validé, accompli et acté au commit `90ab158` (Phases 0 à 6 implémentées, Web UI SPA interactive, endpoints fichiers, vue UI Fondation & Lore opérationnels, correction du pipeline multi-projet dans `src/pipeline_adapter.py`, et suite de tests d'intégration E2E `pytest tests/` validée)
 
 **Entrée** : Intégration d'une interface web interactive HTML/CSS/JS autonome, servie par FastAPI à la racine `/` (ou en couche client), permettant de piloter le pipeline de création de roman autonome à partir du back-office validé.
 
@@ -153,7 +153,7 @@ L'utilisateur sélectionne un fichier de fondation ou de lore (`world.md`, `char
 
 ## Clauses de réconciliation
 
-- **Ce qui est validé** : back-office API + endpoints (`src/api.py`, `src/projects.py`, `src/universes.py`, `src/versioning.py`, `src/pipeline_adapter.py`) + tests associées → à réutiliser intact, à marquer `[x]` dans `tasks.md`.
+- **Ce qui est validé** : back-office API + endpoints (`src/api.py`, `src/projects.py`, `src/universes.py`, `src/versioning.py`, `src/pipeline_adapter.py` avec correction du pipeline multi-projet ciblant `projects/{project_id}/state.json`) + suite complète de tests d'intégration E2E (`tests/test_api.py`, `tests/test_pipeline.py`, `tests/test_projects.py`, `tests/test_universes.py`, `tests/test_versioning.py`) → entièrement validée et actée.
 - **Ce qui est specifié (non implémenté)** : `ui/index.html` + `ui/css/style.css` + `ui/js/*.js` + routes statiques dans `src/api.py` → tâches ouvertes `[ ]`.
 - **Ce qui est exclu de cette spécification** : système d'authentification, multi-utilisateurs, hébergement, build-time (webpack/vite) — hors scope v1.
 - **Hygiène du worktree & verrouillage du scope** : Le répertoire de stockage des projets générés (`projects/`) est strictement exclu du périmètre de versioning et des opérations Git. **Aucune tentative de commit ou de manipulation (ajout, modification, suppression via l'agent) sur les dossiers de projets générés non suivis n'est autorisée**, garantissant un worktree propre, étanche et focalisé uniquement sur le code source et les spécifications.
