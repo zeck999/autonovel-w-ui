@@ -6,7 +6,7 @@ description: "Tâches pour l'implémentation de la VRAIE Web UI HTML/CSS/JS inte
 
 **Entrée** : Documents de conception de `/specs/001-web-ui-autonovel/`
 
-**Préréquis** : Back-office API existant et testé (`src/api.py`, `src/projects.py`, `src/universes.py`, `src/versioning.py`, `src/pipeline_adapter.py`) — marqué comme `[x]` ci-dessous (acquis par réconciliation).
+**Préréquis** : Back-office API existant et testé (`src/api.py`, `src/projects.py`, `src/universes.py`, `src/versioning.py`, `src/pipeline_adapter.py` avec synchronisation multi-projet corrigée et validée) — marqué comme `[x]` ci-dessous (acquis par réconciliation).
 
 ---
 
@@ -42,6 +42,7 @@ description: "Tâches pour l'implémentation de la VRAIE Web UI HTML/CSS/JS inte
 
 ## Phase 4 : Pipeline, Monitoring & Volet d'Inspection (Priorité : P1 & P5)
 
+- [x] T040 [US1] Corriger et valider la synchronisation multi-projet dans l'adaptateur de pipeline (`src/pipeline_adapter.py`) pour cibler correctement le répertoire projet (`projects/{project_id}`) et son état (`state.json`).
 - [x] T041 [US1] Créer la vue Pipeline & Monitoring (`ui/js/views/pipeline.js`) pour exécuter une phase (`POST /api/pipeline/run`), afficher l'état courant et lancer des évaluations (`POST /api/pipeline/evaluate`).
 - [x] T042 [US5] Implémenter le volet d'inspection et de logs rétractable (`ui/js/inspector.js`), accessible par bouton toggle ou raccourci (`Alt+I`/`Esc`), avec polling asynchrone, mise en évidence des erreurs et masquage des secrets.
 

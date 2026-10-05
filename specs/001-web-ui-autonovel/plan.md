@@ -27,7 +27,7 @@ Implémenté et testé (à **réutiliser intact**) :
 | `src/projects.py` | CRUD projets | `tests/test_projects.py` |
 | `src/universes.py` | CRUD univers partagés | `tests/test_universes.py` |
 | `src/versioning.py` | branches + historique des révisions | `tests/test_versioning.py` |
-| `src/pipeline_adapter.py` | invoque `run_pipeline.py` / `evaluate.py` | (usage API) |
+| `src/pipeline_adapter.py` | invoque `run_pipeline.py` / `evaluate.py` (avec synchronisation multi-projet corrigée et isolation par projet) | (usage API) |
 
 À construire : la couche UI. `landing/index.html` (page marketing) reste hors scope de la Web UI.
 
