@@ -145,7 +145,10 @@ class PipelineRun(BaseModel):
 
 @app.post("/api/pipeline/run", response_model=Dict)
 def api_pipeline_run(payload: PipelineRun):
-    return run_pipeline_phase(payload.phase, payload.project_id, payload.max_cycles)
+    res = run_pipeline_phase(payload.phase, payload.project_id, payload.max_cycles)
+    if res.get("returncode", 0) != 0 or res.get("error"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Pipeline execution failed"))
+    return res
 
 class PipelineEvaluate(BaseModel):
     project_id: Optional[str] = None
@@ -153,7 +156,10 @@ class PipelineEvaluate(BaseModel):
 
 @app.post("/api/pipeline/evaluate", response_model=Dict)
 def api_pipeline_evaluate(payload: PipelineEvaluate):
-    return evaluate_project(payload.project_id, payload.chapter_num)
+    res = evaluate_project(payload.project_id, payload.chapter_num)
+    if res.get("returncode", 0) != 0 or res.get("error"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Evaluation failed"))
+    return res
 
 # --- Static Files & SPA Fallback ---
 app.mount("/css", StaticFiles(directory=STATIC_UI / "css"), name="ui-css")

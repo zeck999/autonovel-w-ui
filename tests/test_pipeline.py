@@ -48,11 +48,24 @@ def test_run_pipeline_phase_error(mock_run):
 def test_evaluate_project_command(mock_run):
     mock_res = MagicMock()
     mock_res.returncode = 0
-    mock_res.stdout = "Evaluation passed"
+    mock_res.stdout = "Evaluation passed\noverall_score: 8.5"
     mock_res.stderr = ""
     mock_run.return_value = mock_res
 
     res = evaluate_project()
     assert res["returncode"] == 0
+    assert res["score"] == 8.5
     called_cmd = mock_run.call_args[0][0]
     assert str(BASE_DIR / "evaluate.py") in called_cmd
+
+@patch("src.pipeline_adapter.subprocess.run")
+def test_api_pipeline_run_error_raises_400(mock_run):
+    mock_res = MagicMock()
+    mock_res.returncode = 1
+    mock_res.stdout = ""
+    mock_res.stderr = "Pipeline failure"
+    mock_run.return_value = mock_res
+
+    response = client.post("/api/pipeline/run", json={"phase": "foundation"})
+    assert response.status_code == 400
+    assert "detail" in response.json()

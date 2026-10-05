@@ -5,6 +5,7 @@ Invokes run_pipeline.py, evaluate.py, and manages pipeline execution per project
 
 import subprocess
 import json
+import re
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -77,10 +78,19 @@ def evaluate_project(project_id: Optional[str] = None, chapter_num: Optional[int
 
     try:
         res = subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd=str(cwd), timeout=120)
+        score = None
+        match = re.search(r'(?:overall_score|novel_score):\s*([0-9.]+)', res.stdout)
+        if match:
+            try:
+                score = float(match.group(1))
+            except ValueError:
+                pass
+
         return {
             "returncode": res.returncode,
             "output": res.stdout,
-            "error": res.stderr
+            "error": res.stderr if res.returncode != 0 else None,
+            "score": score
         }
     except Exception as e:
-        return {"returncode": -1, "output": "", "error": str(e)}
+        return {"returncode": -1, "output": "", "error": str(e), "score": None}

@@ -127,17 +127,27 @@ export function renderPipeline(container) {
             e.preventDefault();
             const chVal = document.getElementById('eval-chapter').value;
             const chapterNum = chVal ? parseInt(chVal, 10) : null;
+            const btn = evalForm.querySelector('button[type="submit"]');
 
             try {
+                if (btn) {
+                    btn.disabled = true;
+                    btn.textContent = 'Evaluating...';
+                }
                 const res = await api.evaluateProject({
                     project_id: pid,
                     chapter_num: chapterNum
                 });
                 await store.refreshActiveProjectData();
-                alert(`Evaluation completed. Score: ${res.score || 'N/A'}`);
+                alert(`Evaluation completed. Score: ${res.score !== null && res.score !== undefined ? res.score : 'N/A'}`);
                 renderPipeline(container);
             } catch (err) {
                 alert(`Evaluation error: ${err.message}`);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Run Evaluation';
+                }
             }
         });
     }
