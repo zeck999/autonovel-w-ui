@@ -1,5 +1,5 @@
 ---
-description: "Tâches pour l'implémentation de la VRAIE Web UI HTML/CSS/JS interactive pour Autonovel"
+description: "Tâches pour l'implémentation de la VRAIE Web UI HTML/CSS/JS interactive pour Autonovel, incluant l'édition des fichiers de fondation et de lore"
 ---
 
 # Tâches : Web UI Autonovel (HTML/CSS/JS autonome, FastAPI)
@@ -47,11 +47,18 @@ description: "Tâches pour l'implémentation de la VRAIE Web UI HTML/CSS/JS inte
 
 ---
 
-## Phase 5 : Polissage, Responsive & Documentation
+## Phase 5 : Édition des Fichiers de Fondation et de Lore (Priorité : P2)
 
-- [x] T051 [P] Ajuster le design responsive (mobile ≤ 480 px : navigation en drawer, volet d'inspection en modal).
-- [x] T052 Valider le parcours complet (SC-001..SC-006) en local (`uv run uvicorn src.api:app --port 8000`) et vérifier que tous les tests `pytest tests/` restent PASS.
-- [x] T053 Mettre à jour `README.md` et `PIPELINE.md` pour documenter la nouvelle Web UI interactive.
+- [x] T050 [US6] Implémenter les endpoints API de lecture et écriture des fichiers de projet (`GET /api/projects/{id}/files/{filename}` et `PUT /api/projects/{id}/files/{filename}`) pour `world.md`, `characters.md`, `outline.md`, `canon.md`.
+- [x] T051 [US6] Créer la vue Fondation & Lore (`ui/js/views/foundation.js`) permettant de sélectionner, éditer et sauvegarder les fichiers de fondation/lore du projet actif.
+
+---
+
+## Phase 6 : Polissage, Responsive & Documentation
+
+- [x] T061 [P] Ajuster le design responsive (mobile ≤ 480 px : navigation en drawer, volet d'inspection en modal).
+- [x] T062 Valider le parcours complet (SC-001..SC-006) en local (`uv run uvicorn src.api:app --port 8000`) et vérifier que tous les tests `pytest tests/` restent PASS.
+- [x] T063 Mettre à jour `README.md` et `PIPELINE.md` pour documenter la nouvelle Web UI interactive.
 
 ---
 
@@ -60,4 +67,4 @@ description: "Tâches pour l'implémentation de la VRAIE Web UI HTML/CSS/JS inte
 - **Phase 0** bloque toutes les phases UI (dépend du back-office existant).
 - **Phase 1 (Dashboard)** est le premier livrable MVP (US1).
 - **Phase 2 & 3** peuvent s'exécuter en parallèle après Phase 1.
-- **Phase 4 & 5** finalisent l'expérience utilisateur progressive et la documentation.
+- **Phase 4, 5 & 6** finalisent l'expérience utilisateur progressive, l'édition de lore et la documentation.

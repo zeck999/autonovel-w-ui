@@ -15,7 +15,7 @@ Objectifs prioritaires :
 3. **Pilotage du pipeline** — lancer/observer les phases avec logs affichés dans un volet rétractable.
 4. **Gestion des projets & sélection d'univers partagés** — créer/sélectionner/supprimer, attacher un univers.
 5. **Exploration des branches narratives** — liste, création, bascule, historique des révisions.
-6. **Volet d'inspection & logs** — expérience progressive, rétractable, avec mise en évidence des erreurs.
+6. **Édition des fichiers de fondation et de lore** — consultation et modification directe de `world.md`, `characters.md`, `outline.md`, `canon.md` via des endpoints dédiés et une vue UI dédiée.
 
 ## État de la base (preuves)
 
@@ -59,7 +59,8 @@ ui/
     │   ├── projects.js     # Scénario 2 (créer/sélectionner/supprimer)
     │   ├── universes.js    # Scénario 3 (liste, sélection, attache)
     │   ├── branches.js     # Scénario 4 (listes, création, bascule, historique)
-    │   └── pipeline.js     # Scénario 1 + 5 (lancer une phase, logs, polling)
+    │   ├── pipeline.js     # Scénario 1 + 5 (lancer une phase, logs, polling)
+    │   └── foundation.js   # Scénario 6 (édition des fichiers world.md, characters.md, outline.md, canon.md)
     └── inspector.js      # Scénario 5 (volet d'inspection & logs rétractable)
 ```
 
@@ -71,7 +72,7 @@ ui/
 | `/{path:path}` | `GET` | Sert statiquement `ui/index.html` → SPA fallback (toutes les routes UI passent par une seule route catch-all) |
 | `/{name}/css/{path:path}` | `GET` | Serveur statique pour `ui/css/…` |
 | `/{name}/js/{path:path}` | `GET` | Serveur statique pour `ui/js/…` |
-| `/api/*` | `GET/POST/DELETE` | Back-office existant (inchangé, tests à rester PASS) |
+| `/api/projects/{id}/files/{filename}` | `GET` / `PUT` | Lecture et sauvegarde des fichiers de fondation et lore (`world.md`, `characters.md`, `outline.md`, `canon.md`) |
 
 Implémentation FastAPI : ajouter dans `src/api.py` :
 
@@ -121,10 +122,14 @@ La route racine `/` DOIT être définie **avant** la route catch-all `/{path:pat
 - T-41 : vue `pipeline.js` — formulaire de phase (`/api/pipeline/run`), polling sur `/api/pipeline/status`, affichage des logs.
 - T-42 : volet d'inspection & logs (`inspector.js`) — rétractable (clavier `Alt+I`/`Esc`, bouton toggle), persistance locale, mise en évidence des erreurs, masquage des secrets.
 
-**Phase 5 — Polissage & validation**
-- T-51 : responsive (mobile ≤ 480 px : nav en drawer, inspection en modal).
-- T-52 : tests manuels checklist SC-001..SC-006 + tests API `pytest tests/` à rester PASS (rétrocompatibilité).
-- T-53 : mise à jour `README.md` (section « Web UI ») et `PIPELINE.md`.
+**Phase 5 — Fondation & Lore (Édition des fichiers)**
+- T-50 : endpoints API `/api/projects/{id}/files/{filename}` (GET/PUT) pour lire et écrire `world.md`, `characters.md`, `outline.md`, `canon.md`.
+- T-51 : vue `foundation.js` — sélection de fichier, éditeur texte markdown, sauvegarde asynchrone avec feedback visuel.
+
+**Phase 6 — Polissage & validation**
+- T-61 : responsive (mobile ≤ 480 px : nav en drawer, inspection en modal).
+- T-62 : tests manuels checklist SC-001..SC-006 + tests API `pytest tests/` à rester PASS (rétrocompatibilité).
+- T-63 : mise à jour `README.md` (section « Web UI ») et `PIPELINE.md`.
 
 ## Constitution Check
 

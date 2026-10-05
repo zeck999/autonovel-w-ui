@@ -80,6 +80,16 @@ L'utilisateur ouvre le volet d'inspection en un clic, lit les logs de pipeline, 
 
 ---
 
+### Scénario 6 - Édition des fichiers de fondation et de lore (`world.md`, `characters.md`, `outline.md`, `canon.md`) (Priorité : P2)
+L'utilisateur sélectionne un fichier de fondation ou de lore (`world.md`, `characters.md`, `outline.md`, `canon.md`) du projet actif, le consulte, le modifie dans un éditeur intégré à la Web UI, et sauvegarde les modifications.
+
+**Scénarios d'Acceptation** :
+1. **Étant donné** un projet actif, **Quand** l'utilisateur navigue vers la vue « Fondation & Lore », **Alors** la liste des fichiers éditables (`world.md`, `characters.md`, `outline.md`, `canon.md`) est affichée.
+2. **Étant donné** un fichier sélectionné, **Quand** son contenu est chargé via l'API (`GET /api/projects/{id}/files/{filename}`), **Alors** il s'affiche dans un éditeur texte interactif.
+3. **Étant donné** des modifications apportées au contenu, **Quand** l'utilisateur clique sur « Sauvegarder », **Alors** une requête `PUT` (ou `POST`) vers `/api/projects/{id}/files/{filename}` enregistre les modifications sur le disque dans le répertoire du projet.
+
+---
+
 ### Edge Cases
 - Que se passe-t-il quand le back-office n'est pas disponible (`uvicorn` non lancé) ? → message d'état « API déconnectée » sans casser la page ; re-connexion automatique au retour.
 - Comment gérer un pipeline long (10+ min) ? → l'app appelle `/api/pipeline/run` en attente courte et passe en mode polling sur `/api/pipeline/status`, avec affichage des logs par tranches.
@@ -103,8 +113,10 @@ L'utilisateur ouvre le volet d'inspection en un clic, lit les logs de pipeline, 
 - **FR-006** : Toutes les interactions DOIVENT être asynchrones (fetch / AbortController) vers `/api/...`, avec gestion des états `loading`, `idle`, `error` et `success`.
 - **FR-007** : Le volet d'inspection & logs DOIT être rétractable (clavier : `Alt+I` ou `Esc` ; souris : bouton toggle).
 - **FR-008** : L'interface DOIT rester utilisable en mode dégradé (pas d'API) avec un message clair ; aucune donnée ne DOIT être perdue lors d'une déconnexion.
-- **FR-009** : Les URLs DOIVENT évoluer progressivement (SPA, history.pushState) pour les vues principales (`/#/projects`, `/#/universes`, `/#/branches`, `/#/pipeline`) afin d'être navigables et partageables en mode SPA.
+- **FR-009** : Les URLs DOIVENT évoluer progressivement (SPA, history.pushState) pour les vues principales (`/#/projects`, `/#/universes`, `/#/branches`, `/#/pipeline`, `/#/foundation`) afin d'être navigables et partageables en mode SPA.
 - **FR-010** : L'interface DOIT être responsive (mobile ≤ 480px : menu en drawer, volet d'inspection en modal).
+- **FR-011** : L'API DOIT fournir des endpoints de lecture et écriture des fichiers de projet (`GET /api/projects/{id}/files/{filename}` et `PUT /api/projects/{id}/files/{filename}`) pour `world.md`, `characters.md`, `outline.md`, `canon.md`, etc.
+- **FR-012** : La Web UI DOIT intégrer une vue/onglet « Fondation & Lore » permettant de sélectionner, éditer et sauvegarder ces fichiers de manière fluide et asynchrone.
 
 ---
 
