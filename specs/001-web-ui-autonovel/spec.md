@@ -4,7 +4,7 @@
 
 **Créée** : 2026-10-04
 
-**Statut** : Validé, accompli et acté au commit `b666967` (Phases 0 à 6 implémentées, Web UI SPA interactive, endpoints fichiers et vue UI Fondation & Lore opérationnels, tests unitaires et validation validés)
+**Statut** : Validé, accompli et acté au commit `001800a` (Phases 0 à 6 implémentées, Web UI SPA interactive, endpoints fichiers et vue UI Fondation & Lore opérationnels, tests unitaires et validation validés)
 
 **Entrée** : Intégration d'une interface web interactive HTML/CSS/JS autonome, servie par FastAPI à la racine `/` (ou en couche client), permettant de piloter le pipeline de création de roman autonome à partir du back-office validé.
 

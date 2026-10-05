@@ -2,11 +2,11 @@
 description: "Tâches pour l'implémentation de la VRAIE Web UI HTML/CSS/JS interactive pour Autonovel, incluant l'édition des fichiers de fondation et de lore"
 ---
 
-# Tâches : Web UI Autonovel (HTML/CSS/JS autonome, FastAPI) - Clôturées (Commit `b666967`)
+# Tâches : Web UI Autonovel (HTML/CSS/JS autonome, FastAPI) - Clôturées (Commit `001800a`)
 
 **Entrée** : Documents de conception de `/specs/001-web-ui-autonovel/`
 
-**Statut** : Toutes les phases (0 à 6) sont pleinement implémentées, testées et validées. Réconcilié et acté au commit `b666967`.
+**Statut** : Toutes les phases (0 à 6) sont pleinement implémentées, testées et validées. Réconcilié et acté au commit `001800a`.
 
 **Préréquis** : Back-office API existant et testé (`src/api.py`, `src/projects.py`, `src/universes.py`, `src/versioning.py`, `src/pipeline_adapter.py` avec synchronisation multi-projet corrigée et validée) — marqué comme `[x]` ci-dessous (acquis par réconciliation).
 
