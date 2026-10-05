@@ -156,3 +156,4 @@ L'utilisateur sélectionne un fichier de fondation ou de lore (`world.md`, `char
 - **Ce qui est validé** : back-office API + endpoints (`src/api.py`, `src/projects.py`, `src/universes.py`, `src/versioning.py`, `src/pipeline_adapter.py`) + tests associées → à réutiliser intact, à marquer `[x]` dans `tasks.md`.
 - **Ce qui est specifié (non implémenté)** : `ui/index.html` + `ui/css/style.css` + `ui/js/*.js` + routes statiques dans `src/api.py` → tâches ouvertes `[ ]`.
 - **Ce qui est exclu de cette spécification** : système d'authentification, multi-utilisateurs, hébergement, build-time (webpack/vite) — hors scope v1.
+- **Hygiène du worktree & exclusion** : Le répertoire de stockage des projets générés (`projects/`) est explicitement exclu dans `.gitignore` pour garantir un worktree propre, sans pollution et prêt pour l'intégration atomique.

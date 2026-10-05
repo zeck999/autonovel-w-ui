@@ -143,6 +143,7 @@ La route racine `/` DOIT être définie **avant** la route catch-all `/{path:pat
 ## Complexité tracking
 
 - **Risque principal** : collision de routes FastAPI (`/` vs `/api/*`). Résolu par l'ordre des routes et le guard `is_file()` du catch-all.
+- **Hygiène du worktree** : Exclusion explicite du répertoire de travail des projets (`projects/`) dans `.gitignore` afin de garantir un worktree propre, sans artéfacts résiduels ni pollution de commit.
 - **Durée du pipeline** : risquée (> 10 min). Atténuée par le polling sur `/api/pipeline/status` et l'affichage par tranches, non par une attente bloquante côté client.
 - **Secrets dans les logs** : atténuée par un masque simple (`\*\*\*\*`) des lignes contenant `sk-`, `AI_`, `api_key`, `password` à l'affichage.
 
