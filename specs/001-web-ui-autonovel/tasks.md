@@ -44,7 +44,7 @@ description: "Tâches pour l'implémentation de la VRAIE Web UI HTML/CSS/JS inte
 
 ## Phase 4 : Pipeline, Monitoring, Logging Temps Réel & Mode Review-Only (Priorité : P1 & P5)
 
-- [x] T040 [US1] Corriger et valider la synchronisation multi-projet dans l'adaptateur de pipeline (`src/pipeline_adapter.py`) pour cibler correctement le répertoire projet (`projects/{project_id}`) et son état (`state.json`) — **Testé, validé et acté via `tests/test_pipeline.py`**.
+- [x] T040 [US1] Corriger et valider la **synchronisation bidirectionnelle multi-projet** dans l'adaptateur de pipeline (`src/pipeline_adapter.py`) pour cibler correctement le répertoire projet (`projects/{project_id}`) et son état (`state.json`), garantissant l'isolation des exécutions et la persistance par projet — **Testé, validé et acté via `tests/test_pipeline.py` et `tests/test_api.py`**.
 - [x] T041 [US1] Créer la vue Pipeline & Monitoring (`ui/js/views/pipeline.js`) pour exécuter une phase (`POST /api/pipeline/run`), afficher l'état courant et lancer des évaluations (`POST /api/pipeline/evaluate`).
 - [x] T042 [US5] Implémenter le volet d'inspection et de logs rétractable (`ui/js/inspector.js`), accessible par bouton toggle ou raccourci (`Alt+I`/`Esc`), avec polling asynchrone, mise en évidence des erreurs et masquage des secrets.
 - [x] T043 [US1/US5] Acter et implémenter le **logging temps réel du pipeline** via polling asynchrone (`state.json` / logs) et affichage dynamique dans le volet d'inspection, avec coloration des erreurs/succès et protection des secrets.
@@ -74,3 +74,12 @@ description: "Tâches pour l'implémentation de la VRAIE Web UI HTML/CSS/JS inte
 - **Phase 1 (Dashboard)** est le premier livrable MVP (US1).
 - **Phase 2 & 3** peuvent s'exécuter en parallèle après Phase 1.
 - **Phase 4, 5 & 6** finalisent l'expérience utilisateur progressive, l'édition de lore et la documentation.
+
+---
+
+## Note de Réconciliation : Synchronisation Bidirectionnelle Multi-Projet
+
+La correction de la synchronisation bidirectionnelle multi-projet (`T040`) est pleinement actée, documentée et validée par la suite de tests (`tests/test_pipeline.py`, `tests/test_api.py`) :
+1. **Isolation du répertoire de travail (`cwd`)** : `src/pipeline_adapter.py` exécute les scripts du pipeline (`run_pipeline.py`, `evaluate.py`, etc.) dans le répertoire projet ciblé (`projects/{project_id}`), garantissant que chaque projet possède son propre contexte d'exécution.
+2. **État et persistance bidirectionnelle (`state.json`)** : `get_pipeline_status(project_id)` lit et écrit dynamiquement l'état dans `projects/{project_id}/state.json`, permettant aux interactions de la Web UI (Dashboard, Pipeline, Monitoring) de refléter et de piloter précisément le projet actif.
+3. **Validation durable** : Couvert par les tests d'intégration et unitaires du back-office, garantissant zéro régression et une étanchéité parfaite entre les projets.
