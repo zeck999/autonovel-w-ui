@@ -36,21 +36,43 @@ def get_pipeline_status(project_id: Optional[str] = None) -> Dict:
     }
 
 def run_pipeline_phase(phase: str, project_id: Optional[str] = None, max_cycles: Optional[int] = None) -> Dict:
-    script_path = BASE_DIR / "run_pipeline.py"
-    cmd = f"uv run python {script_path} --phase {phase}"
-    if max_cycles is not None:
+    script_to_run = "run_pipeline.py"
+    actual_phase = phase
+
+    if phase == "outline":
+        script_to_run = "gen_outline.py"
+    elif phase == "draft":
+        actual_phase = "drafting"
+    elif phase == "review":
+        script_to_run = "evaluate.py"
+    elif phase == "revise":
+        actual_phase = "revision"
+    elif phase == "typeset":
+        actual_phase = "export"
+    elif phase == "audiobook":
+        script_to_run = "gen_audiobook.py"
+
+    if script_to_run == "run_pipeline.py":
+        cmd = f"uv run python {BASE_DIR / 'run_pipeline.py'} --phase {actual_phase}"
+    elif script_to_run == "evaluate.py":
+        cmd = f"uv run python {BASE_DIR / 'evaluate.py'} --full"
+    else:
+        cmd = f"uv run python {BASE_DIR / script_to_run}"
+
+    if max_cycles is not None and script_to_run == "run_pipeline.py":
         cmd += f" --max-cycles {max_cycles}"
 
     cwd = BASE_DIR
     if project_id:
         p_path = BASE_DIR / "projects" / project_id
         if p_path.exists():
-            # If running in project context, we can point or copy state
             cwd = p_path
 
     try:
         res = subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd=str(cwd), timeout=300)
         status = get_pipeline_status(project_id)
+        if res.returncode == 0:
+            status["phase"] = phase
         status["last_run_output"] = res.stdout[-500:] if res.stdout else ""
         status["last_run_returncode"] = res.returncode
         status["returncode"] = res.returncode
