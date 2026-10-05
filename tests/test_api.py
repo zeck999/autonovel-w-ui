@@ -1,5 +1,5 @@
 """
-Unit tests for src/api.py (FastAPI endpoints)
+Unit tests for src/api.py (FastAPI endpoints and UI static/HTML serving)
 """
 
 import pytest
@@ -11,8 +11,17 @@ client = TestClient(app)
 def test_root_endpoint():
     response = client.get("/")
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "active"
+    assert "text/html" in response.headers["content-type"]
+    assert "Autonovel" in response.text
+
+def test_static_css_endpoint():
+    response = client.get("/css/style.css")
+    assert response.status_code == 200
+    assert "text/css" in response.headers["content-type"]
+
+def test_static_js_endpoint():
+    response = client.get("/js/router.js")
+    assert response.status_code == 200
 
 def test_api_projects_workflow():
     # Create project

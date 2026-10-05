@@ -1,9 +1,13 @@
 """
 src/api.py — FastAPI application exposing REST endpoints for Autonovel Web UI and harness.
-Covers multi-project management, shared universes, narrative versioning, and pipeline control.
+Covers multi-project management, shared universes, narrative versioning, and pipeline control,
+plus serving the Autonovel Web UI (HTML/CSS/JS).
 """
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from pathlib import Path
 from typing import Optional, List, Dict
 from pydantic import BaseModel
 
@@ -18,9 +22,11 @@ app = FastAPI(
     version="0.1.0"
 )
 
+STATIC_UI = Path(__file__).resolve().parent.parent / "ui"
+
 @app.get("/")
-def read_root():
-    return {"message": "Welcome to Autonovel API", "status": "active"}
+def ui_root():
+    return FileResponse(STATIC_UI / "index.html")
 
 # --- Projects Endpoints ---
 @app.get("/api/projects", response_model=List[Dict])
@@ -118,3 +124,14 @@ class PipelineEvaluate(BaseModel):
 @app.post("/api/pipeline/evaluate", response_model=Dict)
 def api_pipeline_evaluate(payload: PipelineEvaluate):
     return evaluate_project(payload.project_id, payload.chapter_num)
+
+# --- Static Files & SPA Fallback ---
+app.mount("/css", StaticFiles(directory=STATIC_UI / "css"), name="ui-css")
+app.mount("/js", StaticFiles(directory=STATIC_UI / "js"), name="ui-js")
+
+@app.get("/{path:path}")
+def ui_spa(path: str):
+    file_path = STATIC_UI / path
+    if file_path.exists() and file_path.is_file():
+        return FileResponse(file_path)
+    return FileResponse(STATIC_UI / "index.html")
