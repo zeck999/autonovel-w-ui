@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional, List, Dict
 from pydantic import BaseModel
 
-from src.projects import list_projects, create_project, get_project, delete_project, ProjectCreate
+from src.projects import list_projects, create_project, get_project, delete_project, list_project_files, get_project_file, save_project_file, ProjectCreate
 from src.universes import list_universes, create_universe, get_universe, delete_universe, UniverseCreate
 from src.versioning import list_branches, create_branch, switch_branch, get_revision_history
 from src.pipeline_adapter import get_pipeline_status, run_pipeline_phase, evaluate_project
@@ -50,6 +50,36 @@ def api_delete_project(project_id: str):
     if not success:
         raise HTTPException(status_code=404, detail="Project not found")
     return {"status": "deleted", "id": project_id}
+
+@app.get("/api/projects/{project_id}/files", response_model=List[Dict])
+def api_list_project_files(project_id: str):
+    proj = get_project(project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return list_project_files(project_id)
+
+@app.get("/api/projects/{project_id}/files/{filename:path}", response_model=Dict)
+def api_get_project_file(project_id: str, filename: str):
+    proj = get_project(project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    content = get_project_file(project_id, filename)
+    if content is None:
+        raise HTTPException(status_code=404, detail="File not found")
+    return {"filename": filename, "content": content}
+
+class FileSavePayload(BaseModel):
+    content: str
+
+@app.put("/api/projects/{project_id}/files/{filename:path}", response_model=Dict)
+def api_save_project_file(project_id: str, filename: str, payload: FileSavePayload):
+    proj = get_project(project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    success = save_project_file(project_id, filename, payload.content)
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to save file")
+    return {"status": "saved", "filename": filename}
 
 # --- Universes Endpoints ---
 @app.get("/api/universes", response_model=List[Dict])

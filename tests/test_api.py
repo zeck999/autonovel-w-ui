@@ -82,3 +82,40 @@ def test_api_versioning_and_pipeline():
     response = client.get("/api/pipeline/status")
     assert response.status_code == 200
     assert "phase" in response.json()
+
+def test_api_project_files_workflow():
+    # Create project
+    payload = {
+        "name": "Files Test Novel",
+        "concept": "A testing novel for project files API."
+    }
+    response = client.post("/api/projects", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    pid = data["id"]
+
+    # List files
+    response = client.get(f"/api/projects/{pid}/files")
+    assert response.status_code == 200
+    files = response.json()
+    assert isinstance(files, list)
+    assert any(f["name"] == "seed.txt" for f in files)
+
+    # Read seed.txt
+    response = client.get(f"/api/projects/{pid}/files/seed.txt")
+    assert response.status_code == 200
+    assert "A testing novel" in response.json()["content"]
+
+    # Save world.md
+    save_payload = {"content": "# World Lore\n\nNeo Tokyo 2150."}
+    response = client.put(f"/api/projects/{pid}/files/world.md", json=save_payload)
+    assert response.status_code == 200
+    assert response.json()["status"] == "saved"
+
+    # Read world.md
+    response = client.get(f"/api/projects/{pid}/files/world.md")
+    assert response.status_code == 200
+    assert "Neo Tokyo 2150" in response.json()["content"]
+
+    # Cleanup: Delete project
+    client.delete(f"/api/projects/{pid}")

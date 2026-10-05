@@ -5,6 +5,7 @@
 import { renderDashboard } from './views/dashboard.js';
 import { renderProjects } from './views/projects.js';
 import { renderUniverses } from './views/universes.js';
+import { renderFiles } from './views/files.js';
 import { renderBranches } from './views/branches.js';
 import { renderPipeline } from './views/pipeline.js';
 
@@ -12,6 +13,7 @@ const routes = {
     '#/dashboard': renderDashboard,
     '#/projects': renderProjects,
     '#/universes': renderUniverses,
+    '#/files': renderFiles,
     '#/branches': renderBranches,
     '#/pipeline': renderPipeline,
     '#/': renderDashboard

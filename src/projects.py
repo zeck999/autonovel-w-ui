@@ -158,3 +158,61 @@ def delete_project(project_id: str) -> bool:
         shutil.rmtree(p_path)
         return True
     return False
+
+STANDARD_PROJECT_FILES = ["seed.txt", "world.md", "characters.md", "outline.md", "canon.md"]
+
+def list_project_files(project_id: str) -> List[Dict]:
+    ensure_projects_dir()
+    p_path = PROJECTS_DIR / project_id
+    if not p_path.exists():
+        return []
+    files = []
+    seen = set()
+    for fname in STANDARD_PROJECT_FILES:
+        seen.add(fname)
+        f_path = p_path / fname
+        files.append({
+            "name": fname,
+            "exists": f_path.exists(),
+            "size": f_path.stat().st_size if f_path.exists() else 0
+        })
+    for item in p_path.iterdir():
+        if item.is_file() and item.name not in seen and item.suffix in [".md", ".txt", ".json"]:
+            files.append({
+                "name": item.name,
+                "exists": True,
+                "size": item.stat().st_size
+            })
+    return files
+
+def get_project_file(project_id: str, filename: str) -> Optional[str]:
+    ensure_projects_dir()
+    p_path = PROJECTS_DIR / project_id
+    if not p_path.exists():
+        return None
+    f_path = (p_path / filename).resolve()
+    if not str(f_path).startswith(str(p_path.resolve())):
+        return None
+    if not f_path.exists():
+        if filename in STANDARD_PROJECT_FILES or f_path.suffix in [".md", ".txt"]:
+            return ""
+        return None
+    try:
+        return f_path.read_text(encoding="utf-8")
+    except Exception:
+        return None
+
+def save_project_file(project_id: str, filename: str, content: str) -> bool:
+    ensure_projects_dir()
+    p_path = PROJECTS_DIR / project_id
+    if not p_path.exists():
+        return False
+    f_path = (p_path / filename).resolve()
+    if not str(f_path).startswith(str(p_path.resolve())):
+        return False
+    try:
+        f_path.parent.mkdir(parents=True, exist_ok=True)
+        f_path.write_text(content, encoding="utf-8")
+        return True
+    except Exception:
+        return False

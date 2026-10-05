@@ -53,6 +53,21 @@ export const api = {
         });
     },
 
+    async listProjectFiles(projectId) {
+        return request(`/projects/${projectId}/files`);
+    },
+
+    async getProjectFile(projectId, filename) {
+        return request(`/projects/${projectId}/files/${encodeURIComponent(filename)}`);
+    },
+
+    async saveProjectFile(projectId, filename, content) {
+        return request(`/projects/${projectId}/files/${encodeURIComponent(filename)}`, {
+            method: 'PUT',
+            body: JSON.stringify({ content })
+        });
+    },
+
     async listUniverses() {
         return request('/universes');
     },
