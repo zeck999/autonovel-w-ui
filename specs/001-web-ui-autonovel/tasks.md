@@ -50,8 +50,8 @@ description: "Tâches pour l'implémentation de la VRAIE Web UI HTML/CSS/JS inte
 
 ## Phase 5 : Édition des Fichiers de Fondation et de Lore (Priorité : P2)
 
-- [ ] T050 [US6] Implémenter les endpoints API de lecture et écriture des fichiers de projet (`GET /api/projects/{id}/files/{filename}` et `PUT /api/projects/{id}/files/{filename}`) pour `world.md`, `characters.md`, `outline.md`, `canon.md`.
-- [ ] T051 [US6] Créer la vue Fondation & Lore (`ui/js/views/foundation.js`) permettant de sélectionner, éditer et sauvegarder les fichiers de fondation/lore du projet actif.
+- [x] T050 [US6] Implémenter les endpoints API de lecture et écriture des fichiers de projet (`GET /api/projects/{id}/files/{filename}` et `PUT /api/projects/{id}/files/{filename}`) pour `world.md`, `characters.md`, `outline.md`, `canon.md`.
+- [x] T051 [US6] Créer la vue Fondation & Lore (`ui/js/views/files.js` / `ui/js/views/foundation.js`) permettant de sélectionner, éditer et sauvegarder les fichiers de fondation/lore du projet actif.
 
 ---
 
