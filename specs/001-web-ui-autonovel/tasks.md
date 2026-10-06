@@ -63,7 +63,7 @@ description: "Tâches pour l'implémentation de la VRAIE Web UI HTML/CSS/JS inte
 
 - [x] T061 [P] Ajuster le design responsive (mobile ≤ 480 px : navigation en drawer, volet d'inspection en modal).
 - [x] T062 Valider le parcours complet (SC-001..SC-006) en local (`uv run uvicorn src.api:app --port 8000`) et vérifier que tous les tests `pytest tests/` (suite complète de **19/19 tests unitaires et d'intégration E2E**) restent PASS — **Validé, corrigé et acté**.
-- [x] T063 Mettre à jour `README.md`, `PIPELINE.md` et les artéfacts Spec Kit pour acter l'implémentation de la Web UI interactive, du logging temps réel du pipeline et du mode review-only.
+- [x] T063 Mettre à jour `README.md`, `PIPELINE.md`, créer le mémo de projet `specs/PROJECT_MEMORY.md` et les artéfacts Spec Kit pour acter l'implémentation de la Web UI interactive, du logging temps réel du pipeline et du mode review-only.
 - [x] T064 Acter dans Spec Kit (`spec.md`, `plan.md`, `tasks.md`) le nettoyage complet du worktree, l'exclusion de `projects/`, et le **verrouillage strict du scope** (interdiction absolue de commit ou de manipulation sur les dossiers de projets générés non suivis).
 
 ---
