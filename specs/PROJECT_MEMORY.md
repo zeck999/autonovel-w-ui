@@ -23,12 +23,14 @@ Le projet repose sur une architecture modulaire strictement cloisonnée :
    - `src/projects.py` : Gestion CRUD des projets, initialisation des structures de dossiers et isolation.
    - `src/universes.py` : Gestion des univers partagés et de l'héritage de lore.
    - `src/versioning.py` : Gestion des branches narratives et de l'historique des révisions avec scores.
+   - `src/settings.py` : Service de gestion des clés API IA (`.env`), lecture/écriture sécurisée, masquage des secrets et logique de test de connexion (Anthropic, ElevenLabs, Fal.ai), exposé via `/api/settings/keys` et `/api/settings/keys/test`.
    - `src/pipeline_adapter.py` : Adaptateur d'exécution du pipeline (`run_pipeline.py`, `evaluate.py`, etc.) avec **synchronisation bidirectionnelle multi-projet** (`sync_project_to_root` / `sync_root_to_project`) et isolation par projet (`projects/{project_id}`).
 
 2. **Web UI SPA (`ui/`)** :
    - `ui/index.html` : Fichiers statiques uniques et point d'entrée SPA avec chargement asynchrone des modules CSS/JS.
    - `ui/css/style.css` : Thème visuel élégant (EB Garamond / Bebas Neue, palettes `#0a0a08`, `#e8e4db`, `#daa548`).
-   - `ui/js/` : Modules autonomes (`api.js`, `store.js`, `router.js`, `inspector.js` et vues `dashboard.js`, `projects.js`, `universes.js`, `branches.js`, `pipeline.js`, `foundation.js`).
+   - `ui/js/` : Modules autonomes (`api.js`, `store.js`, `router.js`, `inspector.js` et vues `dashboard.js`, `projects.js`, `universes.js`, `branches.js`, `pipeline.js`, `foundation.js`, `settings.js`).
+   - `ui/js/views/settings.js` : Vue Paramètres et gestion des clés API (champs masqués, bascule affichage/masquage, sauvegarde persistante et test de connexion en temps réel avec retours visuels de latence et d'erreur).
 
 3. **Pipeline & Outils CLI (`*.py`, `specs/`, `typeset/`)** :
    - Scripts Python de fondation (`seed.py`, `gen_world.py`, `gen_characters.py`, `gen_outline.py`, `gen_canon.py`), de rédaction (`draft_chapter.py`), d'évaluation (`evaluate.py`, `adversarial_edit.py`, `review.py`), de révision (`gen_revision.py`) et d'export (`typeset/build_tex.py`, `gen_audiobook.py`).
@@ -37,7 +39,7 @@ Le projet repose sur une architecture modulaire strictement cloisonnée :
 
 ## 3. État Actuel Validé & Preuves Durables
 
-- **Tests unitaires et d'intégration** : **19/19 tests validés** (`pytest tests/`), incluant `test_api.py`, `test_pipeline.py`, `test_projects.py`, `test_universes.py`, `test_versioning.py`.
+- **Tests unitaires et d'intégration** : Suite complète de tests validés (`pytest tests/`), incluant `test_api.py`, `test_pipeline.py`, `test_projects.py`, `test_universes.py`, `test_versioning.py` et `test_settings.py` (validation des endpoints de lecture, écriture, masquage et test des clés API).
 - **Intégration Web UI** :
   - Dashboard interactif (projets récents, statut global du pipeline, actions rapides).
   - Gestion complète des projets et univers partagés.
@@ -52,4 +54,4 @@ Le projet repose sur une architecture modulaire strictement cloisonnée :
 
 ## 4. Réconciliation Spec Kit
 
-Ce mémo de projet (`PROJECT_MEMORY.md`) est officiellement rattaché aux spécifications Spec Kit du répertoire `specs/001-web-ui-autonovel/` (composé de `spec.md`, `plan.md` et `tasks.md`). Toute évolution future du projet devra maintenir la cohérence entre ce mémo, les spécifications vivantes et la suite de tests validés.
+Ce mémo de projet (`PROJECT_MEMORY.md`) est officiellement rattaché aux spécifications Spec Kit du répertoire `specs/001-web-ui-autonovel/` ainsi qu'à la spécification de la fonctionnalité de gestion des clés API (`specs/settings/`). Toute évolution future du projet devra maintenir la cohérence entre ce mémo, les spécifications vivantes et la suite de tests validés.
