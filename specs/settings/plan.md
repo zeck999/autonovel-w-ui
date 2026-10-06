@@ -64,3 +64,8 @@ tests/
 ```
 
 **Structure Decision**: Integrated cleanly into the existing FastAPI + SPA architecture of Autonovel without external heavy frameworks.
+
+## Implementation Status
+
+- **Status**: Completed, tested, and verified via `pytest tests/test_settings.py`.
+- **Delivered**: `src/settings.py`, endpoints in `src/api.py`, `ui/js/views/settings.js`, router integration, and unit tests.
