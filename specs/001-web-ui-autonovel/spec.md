@@ -4,7 +4,7 @@
 
 **Créée** : 2026-10-04
 
-**Statut** : Validé, accompli, acté au commit `90ab158`, et formalisé dans le mémo de projet [PROJECT_MEMORY.md](./PROJECT_MEMORY.md) (Phases 0 à 6 implémentées, Web UI SPA interactive, endpoints fichiers, vue UI Fondation & Lore opérationnels, correction du pipeline multi-projet dans `src/pipeline_adapter.py`, et suite complète de 19/19 tests validée via `pytest tests/`)
+**Statut** : Validé, accompli, acté au commit `90ab158`, et formalisé dans le mémo de projet [PROJECT_MEMORY.md](../PROJECT_MEMORY.md) (Phases 0 à 6 implémentées, Web UI SPA interactive, endpoints fichiers, vue UI Fondation & Lore opérationnels, correction du pipeline multi-projet dans `src/pipeline_adapter.py`, et suite complète de 19/19 tests validée via `pytest tests/`)
 
 **Entrée** : Intégration d'une interface web interactive HTML/CSS/JS autonome, servie par FastAPI à la racine `/` (ou en couche client), permettant de piloter le pipeline de création de roman autonome à partir du back-office validé.
 

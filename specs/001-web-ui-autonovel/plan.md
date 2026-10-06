@@ -1,6 +1,6 @@
 # Plan d'Implémentation : Web UI Autonovel (HTML/CSS/JS autonome, FastAPI)
 
-**Branche** : `001-web-ui-autonovel` | **Date** : 2026-10-04 | **Statut** : Accompli et acté (Commit `90ab158`, formalisé dans [PROJECT_MEMORY.md](./PROJECT_MEMORY.md)) | **Spécification** : [spec.md](./spec.md)
+**Branche** : `001-web-ui-autonovel` | **Date** : 2026-10-04 | **Statut** : Accompli et acté (Commit `90ab158`, formalisé dans [PROJECT_MEMORY.md](../PROJECT_MEMORY.md)) | **Spécification** : [spec.md](./spec.md)
 
 ## Résumé
 
