@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "agentmemory": {
-      "disabled": true
+      "disabled": false
     }
   }
 }
