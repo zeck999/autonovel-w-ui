@@ -4,7 +4,7 @@
 
 ## Résumé
 
-Le **back-office API FastAPI** (`src/api.py` + modules `projects`, `universes`, `versioning`, `pipeline_adapter`) et ses tests unitaires (`tests/test_api.py`, etc.) sont **pleinement implémentés, testés et validés**. 
+Le **back-office API FastAPI** (`src/api.py` + modules `projects`, `universes`, `versioning`, `pipeline_adapter` avec synchronisation bidirectionnelle multi-projet) et ses tests (`tests/test_api.py`, `tests/test_pipeline.py`, etc., soit **19/19 tests validés**) sont **pleinement implémentés, testés et validés**. 
 
 Ce plan couvre également la spécification et l'architecture de la couche **Web UI interactive** (HTML/CSS/JS autonome / SPA) destinée à être servie par FastAPI pour exploiter ce back-office.
 
@@ -27,7 +27,7 @@ Implémenté et testé (à **réutiliser intact**) :
 | `src/projects.py` | CRUD projets | `tests/test_projects.py` |
 | `src/universes.py` | CRUD univers partagés | `tests/test_universes.py` |
 | `src/versioning.py` | branches + historique des révisions | `tests/test_versioning.py` |
-| `src/pipeline_adapter.py` | invoque `run_pipeline.py` / `evaluate.py` (avec synchronisation multi-projet corrigée et isolation par projet) | (usage API) |
+| `src/pipeline_adapter.py` | invoque `run_pipeline.py` / `evaluate.py` avec **synchronisation bidirectionnelle multi-projet** (`sync_project_to_root` / `sync_root_to_project`) et isolation par projet | `tests/test_pipeline.py`, `tests/test_api.py` |
 
 À construire : la couche UI. `landing/index.html` (page marketing) reste hors scope de la Web UI.
 
