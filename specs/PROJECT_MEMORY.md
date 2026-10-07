@@ -1,8 +1,9 @@
 # PROJECT_MEMORY.md — Mémo de Projet Autonovel & Spécifications Spec Kit
 
 **Date de création** : 2026-10-04  
-**Statut** : Acté, validé et synchronisé avec le Spec Kit (Commit `90ab158`)  
-**Périmètre** : Projet Autonovel — Pipeline autonome de rédaction de romans par IA avec back-office FastAPI et Web UI interactive (SPA).
+**Date de finalisation REQ-20261006161752** : 2026-10-06  
+**Statut** : Acté, validé et synchronisé avec le Spec Kit (REQ-20261006161752 complétée avec succès)  
+**Périmètre** : Projet Autonovel — Pipeline autonome de rédaction de romans par IA avec back-office FastAPI, Web UI interactive (SPA), gestion sécurisée des clés API et synchronisation multi-projet.
 
 ---
 
@@ -52,6 +53,8 @@ Le projet repose sur une architecture modulaire strictement cloisonnée :
 
 ---
 
-## 4. Réconciliation Spec Kit
+## 4. Réconciliation Spec Kit & Clôture REQ-20261006161752
 
-Ce mémo de projet (`PROJECT_MEMORY.md`) est officiellement rattaché aux spécifications Spec Kit du répertoire `specs/001-web-ui-autonovel/` ainsi qu'à la spécification de la fonctionnalité de gestion des clés API (`specs/settings/`, tâches T001 à T011 entièrement achevées et validées). Toute évolution future du projet devra maintenir la cohérence entre ce mémo, les spécifications vivantes et la suite de tests validés.
+Ce mémo de projet (`PROJECT_MEMORY.md`) est officiellement rattaché aux spécifications Spec Kit du répertoire `specs/001-web-ui-autonovel/` ainsi qu'à la spécification de la fonctionnalité de gestion des clés API (`specs/settings/`, tâches T001 à T011 entièrement achevées et validées). 
+
+La requête **REQ-20261006161752** a été finalisée avec succès, validant l'ensemble de l'implémentation de la Web UI interactive, du back-office FastAPI, de la synchronisation bidirectionnelle multi-projet, de la gestion et du test des clés API, ainsi que de la suite complète de tests validés. Toute évolution future du projet devra maintenir la cohérence entre ce mémo, les spécifications vivantes et la suite de tests.
