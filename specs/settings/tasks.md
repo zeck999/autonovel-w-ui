@@ -48,7 +48,7 @@ description: "Tâches pour l'implémentation de la fonctionnalité de test et d'
 
 ## Phase 6 : Convergence
 
-- [ ] T012 Implémenter le module `src/settings.py` et les endpoints REST de gestion des clés API (`GET /api/settings/keys`, `PUT /api/settings/keys`) per FR-001, FR-002, FR-005, FR-006 (missing)
-- [ ] T013 Implémenter la logique de test de connexion et l'endpoint (`POST /api/settings/keys/test`) per FR-003, US2 (missing)
-- [ ] T014 Implémenter la vue Web UI Paramètres (`ui/js/views/settings.js`), le lien de navigation et l'enregistrement dans le routeur per FR-004, US1 (missing)
-- [ ] T015 Implémenter la suite de tests unitaires et d'intégration (`tests/test_settings.py`) et valider avec pytest per SC-003, US3 (missing)
+- [x] T012 Implémenter le module `src/settings.py` et les endpoints REST de gestion des clés API (`GET /api/settings/keys`, `PUT /api/settings/keys`) per FR-001, FR-002, FR-005, FR-006 (completed)
+- [x] T013 Implémenter la logique de test de connexion et l'endpoint (`POST /api/settings/keys/test`) per FR-003, US2 (completed)
+- [x] T014 Implémenter la vue Web UI Paramètres (`ui/js/views/settings.js`), le lien de navigation et l'enregistrement dans le routeur per FR-004, US1 (completed)
+- [x] T015 Implémenter la suite de tests unitaires et d'intégration (`tests/test_settings.py`) et valider avec pytest per SC-003, US3 (completed)
