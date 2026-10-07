@@ -178,11 +178,23 @@ def list_project_files(project_id: str) -> List[Dict]:
         })
     for item in p_path.iterdir():
         if item.is_file() and item.name not in seen and item.suffix in [".md", ".txt", ".json"]:
+            seen.add(item.name)
             files.append({
                 "name": item.name,
                 "exists": True,
                 "size": item.stat().st_size
             })
+    chapters_dir = p_path / "chapters"
+    if chapters_dir.exists() and chapters_dir.is_dir():
+        for item in sorted(chapters_dir.iterdir()):
+            if item.is_file() and item.suffix in [".md", ".txt", ".json"]:
+                rel_name = f"chapters/{item.name}"
+                seen.add(rel_name)
+                files.append({
+                    "name": rel_name,
+                    "exists": True,
+                    "size": item.stat().st_size
+                })
     return files
 
 def get_project_file(project_id: str, filename: str) -> Optional[str]:

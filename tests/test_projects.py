@@ -46,4 +46,15 @@ def test_project_files_functions():
     chars_content = get_project_file(pid, "characters.md")
     assert "Hero: Alex" in chars_content
 
+    # Test chapter files
+    chapter_path = "chapters/chapter_01.md"
+    success_ch = save_project_file(pid, chapter_path, "# Chapter 1\n\nIt was a dark and stormy night.")
+    assert success_ch is True
+
+    ch_content = get_project_file(pid, chapter_path)
+    assert "It was a dark and stormy night" in ch_content
+
+    files_list = list_project_files(pid)
+    assert any(f["name"] == chapter_path for f in files_list)
+
     delete_project(pid)

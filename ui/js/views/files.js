@@ -42,6 +42,9 @@ export async function renderFiles(container) {
         }
     }
 
+    const foundationFiles = files.filter(f => !f.name.startsWith('chapters/'));
+    const chapterFiles = files.filter(f => f.name.startsWith('chapters/'));
+
     container.innerHTML = `
         <div class="grid-2" style="grid-template-columns: 280px 1fr; gap: 1.5rem;">
             <!-- File List Sidebar -->
@@ -50,18 +53,41 @@ export async function renderFiles(container) {
                 <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
                     Projet : <strong>${escapeHtml(pid)}</strong>
                 </p>
-                <div style="display: flex; flex-direction: column; gap: 0.5rem;" id="file-list-container">
-                    ${files.map(f => `
+
+                <!-- Section 1: Fichiers de Fondation & Lore -->
+                <div style="font-size: 0.75rem; font-weight: bold; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem; letter-spacing: 0.05em;">Fichiers de Fondation & Lore</div>
+                <div style="display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem;" id="foundation-file-list">
+                    ${foundationFiles.map(f => `
                         <button class="btn ${f.name === selectedFile ? 'btn-primary' : ''}" style="text-align: left; justify-content: flex-start; width: 100%;" data-filename="${escapeHtml(f.name)}">
                             <span>📄 ${escapeHtml(f.name)}</span>
                             <span style="margin-left: auto; font-size: 0.75rem; opacity: 0.7;">${f.exists ? `${f.size}b` : 'créer'}</span>
                         </button>
                     `).join('')}
                 </div>
-                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1.25rem 0;">
+
+                <!-- Section 2: Chapitres -->
+                <div style="font-size: 0.75rem; font-weight: bold; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem; letter-spacing: 0.05em;">Chapitres</div>
+                <div style="display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.75rem;" id="chapter-file-list">
+                    ${chapterFiles.length === 0 ? `<div style="font-size: 0.85rem; color: var(--text-muted); font-style: italic; padding: 0.25rem 0;">Aucun chapitre.</div>` : ''}
+                    ${chapterFiles.map(f => `
+                        <button class="btn ${f.name === selectedFile ? 'btn-primary' : ''}" style="text-align: left; justify-content: flex-start; width: 100%;" data-filename="${escapeHtml(f.name)}">
+                            <span>📖 ${escapeHtml(f.name.replace('chapters/', ''))}</span>
+                            <span style="margin-left: auto; font-size: 0.75rem; opacity: 0.7;">${f.exists ? `${f.size}b` : 'créer'}</span>
+                        </button>
+                    `).join('')}
+                </div>
+
+                <!-- Quick-create form/button for new chapters -->
+                <form id="new-chapter-form" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                    <input type="text" id="new-chapter-name" class="form-control" placeholder="chapter_01.md" style="font-size: 0.85rem;" required>
+                    <button type="submit" class="btn btn-sm btn-primary" title="Créer un chapitre">+ Chap</button>
+                </form>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 0.5rem 0 1rem 0;">
+
                 <form id="new-custom-file-form" style="display: flex; gap: 0.5rem;">
                     <input type="text" id="new-filename" class="form-control" placeholder="autre_fichier.md" style="font-size: 0.85rem;" required>
-                    <button type="submit" class="btn btn-sm btn-primary">+</button>
+                    <button type="submit" class="btn btn-sm" title="Créer un autre fichier">+</button>
                 </form>
             </div>
 
@@ -81,7 +107,7 @@ export async function renderFiles(container) {
         </div>
     `;
 
-    container.querySelectorAll('#file-list-container button').forEach(btn => {
+    container.querySelectorAll('[data-filename]').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const fname = e.currentTarget.getAttribute('data-filename');
             store.state.selectedProjectFile = fname;
@@ -105,6 +131,27 @@ export async function renderFiles(container) {
                 statusSpan.textContent = `Erreur : ${err.message}`;
             } finally {
                 saveBtn.disabled = false;
+            }
+        });
+    }
+
+    const newChapterForm = document.getElementById('new-chapter-form');
+    if (newChapterForm) {
+        newChapterForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('new-chapter-name');
+            let val = input.value.trim();
+            if (val) {
+                if (!val.startsWith('chapters/')) {
+                    val = `chapters/${val}`;
+                }
+                store.state.selectedProjectFile = val;
+                try {
+                    await api.saveProjectFile(pid, val, `# ${val}\n\nNouveau chapitre.`);
+                    await renderFiles(container);
+                } catch (err) {
+                    alert(`Erreur création chapitre: ${err.message}`);
+                }
             }
         });
     }
