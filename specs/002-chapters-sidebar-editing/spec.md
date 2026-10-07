@@ -4,7 +4,7 @@
 
 **Créée** : 2026-10-07
 
-**Statut** : Validé pour spécification
+**Statut** : Implémenté et validé
 
 **Entrée** : Ajouter une section dédiée 'Chapitres' dans la barre latérale listant les fichiers du répertoire `chapters/` avec édition directe dans l'éditeur existant.
 
