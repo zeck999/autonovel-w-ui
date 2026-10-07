@@ -67,5 +67,5 @@ tests/
 
 ## Implementation Status
 
-- **Status**: Completed, tested, and verified via `pytest tests/test_settings.py`.
-- **Delivered**: `src/settings.py`, endpoints in `src/api.py`, `ui/js/views/settings.js`, router integration, and unit tests.
+- **Status**: Planned / Pending Implementation.
+- **Scope**: Designed for `src/settings.py`, endpoints in `src/api.py`, `ui/js/views/settings.js`, router integration, and unit tests (`tests/test_settings.py`).

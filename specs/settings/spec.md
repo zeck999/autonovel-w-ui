@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-06
 
-**Status**: Implemented / Verified (Covered by `tests/test_settings.py`)
+**Status**: Specified / Planned (Pending implementation)
 
 **Input**: User description: "Reconstruct specs and tasks for the AI keys test and edit feature in specs/settings/ tasks.md and plan.md."
 
