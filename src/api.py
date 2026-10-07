@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pathlib import Path
+import json
 from typing import Optional, List, Dict
 from pydantic import BaseModel
 
@@ -195,6 +196,25 @@ class KeyTestRequest(BaseModel):
 @app.post("/api/settings/keys/test", response_model=Dict)
 def api_test_settings_key(payload: KeyTestRequest):
     return verify_api_key(payload.provider, payload.api_key)
+
+
+# --- Reviews Endpoints ---
+@app.get("/api/reviews/latest", response_model=Dict)
+def api_get_latest_review():
+    edit_logs_dir = Path(__file__).resolve().parent.parent / "edit_logs"
+    if not edit_logs_dir.exists():
+        return {"exists": False, "message": "No edit_logs directory found"}
+    reviews = sorted(edit_logs_dir.glob("*_review.json"), reverse=True)
+    if not reviews:
+        return {"exists": False, "message": "No reviews found"}
+    latest_file = reviews[0]
+    try:
+        data = json.loads(latest_file.read_text())
+        data["file_path"] = str(latest_file.relative_to(Path(__file__).resolve().parent.parent))
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read review log: {e}")
+
 
 # --- Static Files & SPA Fallback ---
 app.mount("/css", StaticFiles(directory=STATIC_UI / "css"), name="ui-css")
