@@ -134,4 +134,22 @@ export const api = {
             body: JSON.stringify(payload)
         });
     }
+,
+    async getSettingsKeys() {
+        return request('/settings/keys');
+    },
+
+    async updateSettingsKeys(payload) {
+        return request('/settings/keys', {
+            method: 'PUT',
+            body: JSON.stringify(payload)
+        });
+    },
+
+    async testSettingsKey(payload) {
+        return request('/settings/keys/test', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+    }
 };

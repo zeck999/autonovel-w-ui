@@ -8,6 +8,7 @@ import { renderUniverses } from './views/universes.js';
 import { renderFiles } from './views/files.js';
 import { renderBranches } from './views/branches.js';
 import { renderPipeline } from './views/pipeline.js';
+import { renderSettings } from './views/settings.js';
 
 const routes = {
     '#/dashboard': renderDashboard,
@@ -16,6 +17,7 @@ const routes = {
     '#/files': renderFiles,
     '#/branches': renderBranches,
     '#/pipeline': renderPipeline,
+    '#/settings': renderSettings,
     '#/': renderDashboard
 };
 

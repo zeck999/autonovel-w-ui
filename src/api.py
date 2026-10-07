@@ -15,6 +15,7 @@ from src.projects import list_projects, create_project, get_project, delete_proj
 from src.universes import list_universes, create_universe, get_universe, delete_universe, UniverseCreate
 from src.versioning import list_branches, create_branch, switch_branch, get_revision_history
 from src.pipeline_adapter import get_pipeline_status, run_pipeline_phase, evaluate_project
+from src.settings import get_api_keys_status, update_api_keys, verify_api_key
 
 app = FastAPI(
     title="Autonovel API",
@@ -160,6 +161,40 @@ def api_pipeline_evaluate(payload: PipelineEvaluate):
     if res.get("returncode", 0) != 0 or res.get("error"):
         raise HTTPException(status_code=400, detail=res.get("error", "Evaluation failed"))
     return res
+
+
+# --- Settings Endpoints ---
+@app.get("/api/settings/keys", response_model=Dict)
+def api_get_settings_keys():
+    return get_api_keys_status()
+
+class SettingsUpdate(BaseModel):
+    anthropic_api_key: Optional[str] = None
+    elevenlabs_api_key: Optional[str] = None
+    fal_key: Optional[str] = None
+
+@app.put("/api/settings/keys", response_model=Dict)
+def api_update_settings_keys(payload: SettingsUpdate):
+    updates = {}
+    if payload.anthropic_api_key is not None:
+        updates["ANTHROPIC_API_KEY"] = payload.anthropic_api_key
+    if payload.elevenlabs_api_key is not None:
+        updates["ELEVENLABS_API_KEY"] = payload.elevenlabs_api_key
+    if payload.fal_key is not None:
+        updates["FAL_KEY"] = payload.fal_key
+        
+    success = update_api_keys(updates)
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to update settings")
+    return {"status": "updated", "keys": get_api_keys_status()}
+
+class KeyTestRequest(BaseModel):
+    provider: str
+    api_key: Optional[str] = None
+
+@app.post("/api/settings/keys/test", response_model=Dict)
+def api_test_settings_key(payload: KeyTestRequest):
+    return verify_api_key(payload.provider, payload.api_key)
 
 # --- Static Files & SPA Fallback ---
 app.mount("/css", StaticFiles(directory=STATIC_UI / "css"), name="ui-css")
