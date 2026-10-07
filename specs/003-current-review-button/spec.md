@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-06
 
-**Status**: Specified / Planned
+**Status**: Implemented & Validated
 
 **Input**: User description: "Create Spec Kit specify, plan, and tasks under specs/003-current-review-button/ for adding a Current Review button in the top menu bar displaying live status, review criteria, and file path tooltip on hover."
 
