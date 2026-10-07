@@ -21,7 +21,7 @@ Le projet repose sur une architecture modulaire strictement cloisonnée :
 
 1. **Back-office API (`src/`)** :
    - `src/api.py` : Application FastAPI exposant les endpoints REST `/api/projects`, `/api/universes`, `/api/versioning/*`, `/api/pipeline/*`, ainsi que les routes statiques et le fallback SPA pour la Web UI.
-   - `src/projects.py` : Gestion CRUD des projets, initialisation des structures de dossiers et isolation.
+   - `src/projects.py` : Gestion CRUD des projets, initialisation des structures de dossiers, scan des chapitres (`chapters/`) et isolation.
    - `src/universes.py` : Gestion des univers partagés et de l'héritage de lore.
    - `src/versioning.py` : Gestion des branches narratives et de l'historique des révisions avec scores.
    - `src/pipeline_adapter.py` : Adaptateur d'exécution du pipeline avec **synchronisation bidirectionnelle multi-projet** (`sync_project_to_root` / `sync_root_to_project`) et isolation par projet (`projects/{project_id}`).
@@ -46,7 +46,7 @@ Le projet repose sur une architecture modulaire strictement cloisonnée :
   - Gestion complète des projets et univers partagés.
   - Pilotage du pipeline en temps réel avec volet d'inspection rétractable et logging dynamique.
   - Mode review-only (évaluation critique via `/api/pipeline/evaluate`).
-  - Édition et sauvegarde asynchrone des fichiers de fondation et de lore (`world.md`, `characters.md`, `outline.md`, `canon.md`).
+  - Édition et sauvegarde asynchrone des fichiers de fondation et de lore (`world.md`, `characters.md`, `outline.md`, `canon.md`) ainsi que des chapitres narratifs (`chapters/*.md`) via la section dédiée dans la barre latérale de l'éditeur.
 - **Hygiène du worktree & verrouillage strict du scope** :
   - Le répertoire de stockage des projets générés (`projects/`) est strictement exclu du versioning Git (`.gitignore`).
   - **Interdiction absolue de manipulation ou de commit sur les dossiers de projets générés non suivis**.
@@ -55,6 +55,6 @@ Le projet repose sur une architecture modulaire strictement cloisonnée :
 
 ## 4. Réconciliation Spec Kit & Clôture
 
-Ce mémo de projet (`PROJECT_MEMORY.md`) est officiellement rattaché aux spécifications Spec Kit du répertoire `specs/001-web-ui-autonovel/` ainsi qu'aux spécifications de la fonctionnalité de gestion des clés API (`specs/settings/`, actuellement spécifiée et planifiée en attente d'implémentation).
+Ce mémo de projet (`PROJECT_MEMORY.md`) est officiellement rattaché aux spécifications Spec Kit des répertoires `specs/001-web-ui-autonovel/`, `specs/002-chapters-sidebar-editing/` ainsi qu'aux spécifications de la fonctionnalité de gestion des clés API (`specs/settings/`, actuellement spécifiée et planifiée en attente d'implémentation).
 
 Toute évolution future devra maintenir la stricte cohérence entre ce mémo, les spécifications vivantes (`specs/`) et la suite de tests validée.
