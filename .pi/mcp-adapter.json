@@ -1,7 +1,12 @@
 {
   "mcpServers": {
     "agentmemory": {
-      "disabled": false
+      "disabled": false,
+      "command": "npx",
+      "args": ["-y", "@agentmemory/mcp"],
+      "env": {
+	"AGENTMEMORY_URL": "http://localhost:3111"
+	}
     }
   }
 }

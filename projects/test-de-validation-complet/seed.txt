@@ -1,0 +1,1 @@
+Un roman de test pour valider le parcours utilisateur complet et la génération des fichiers à chaque phase du pipeline

@@ -1,0 +1,17 @@
+{
+  "id": "test-de-validation-complet",
+  "name": "Test de validation complet",
+  "concept": "Un roman de test pour valider le parcours utilisateur complet et la g\u00e9n\u00e9ration des fichiers \u00e0 chaque phase du pipeline",
+  "universe_id": null,
+  "created_at": "2026-10-06T15:04:35.054706",
+  "phase": "foundation",
+  "current_focus": "planning",
+  "iteration": 0,
+  "foundation_score": 0.0,
+  "lore_score": 0.0,
+  "chapters_drafted": 0,
+  "chapters_total": 0,
+  "novel_score": 0.0,
+  "revision_cycle": 0,
+  "debts": []
+}
