@@ -23,6 +23,16 @@ const routes = {
 
 export function initRouter() {
     window.addEventListener('hashchange', handleRoute);
+    
+    // Mobile hamburger menu toggle
+    const hamburger = document.getElementById('hamburger-toggle');
+    const nav = document.querySelector('nav.main-nav');
+    if (hamburger && nav) {
+        hamburger.addEventListener('click', () => {
+            nav.classList.toggle('open');
+        });
+    }
+
     handleRoute();
 }
 
@@ -42,6 +52,12 @@ function handleRoute() {
             a.classList.remove('active');
         }
     });
+
+    // Close mobile nav if open
+    const nav = document.querySelector('nav.main-nav');
+    if (nav) {
+        nav.classList.remove('open');
+    }
 
     const container = document.getElementById('app-content');
     if (container) {
