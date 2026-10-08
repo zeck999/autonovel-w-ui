@@ -1,9 +1,9 @@
 {
   "version": 1,
   "requestId": "REQ-20261004194217",
-  "gateFingerprint": "026f89048009633e0546d8f7e74685f195dd54f239eefa7197df4a5021ccaad2",
-  "completionRepeats": 2,
+  "gateFingerprint": "869dc4c6a8086581c977e9f1a6bb7b6357dcd87d4688a55195aba651bdcca6c2",
+  "completionRepeats": 1,
   "rejectedQuestions": 0,
-  "assessment": "INCOMPLETE: 4 completion gate(s) failed.\n- REQUEST_NOT_ACTIVE: Request REQ-20261004194217 is COMPLETED, not ACTIVE.\n- RUNTIME_TASKS_OPEN: 1 runtime task(s) remain active, waiting, or interrupted.\n  - RUN-1791223487824 [INTERRUPTED] Corriger définitivement la synchronisation multi-projet dans `src/pipeline_adapter.py` :\n1. Implémen\n- OBSERVATIONS_OPEN: 1 human observation(s) still require explicit confirmation.\n  - OBS-20261005174431 [OPEN] Besoin de debug interactif de la Web UI et du pipeline\n- WORKTREE_UNRECONCILED: The source worktree differs from its request baseline; commit or reconcile every source change. Declared generated artifacts are validated separately and never require a source commit.\n  -  M results.tsv\n  -  M state.json\n  - ?? .pi/mcp-adapter.json\nContinue autonomously on actionable items. If progress requires user authority or a scope reduction, open one blocking zpi_question; never announce completion.",
-  "updatedAt": "2026-10-05T18:22:45.411Z"
+  "assessment": "INCOMPLETE: 1 completion gate(s) failed.\n- REQUEST_NOT_ACTIVE: Request REQ-20261004194217 is COMPLETED, not ACTIVE.\nContinue autonomously on actionable items. If progress requires user authority or a scope reduction, open one blocking zpi_question; never announce completion.",
+  "updatedAt": "2026-10-07T23:27:38.324Z"
 }

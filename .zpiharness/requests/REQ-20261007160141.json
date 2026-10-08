@@ -1,0 +1,28 @@
+{
+  "id": "REQ-20261007160141",
+  "title": "rajoute la fonctionnalité de lire et d'editer chaque fichier chapitre produit pour le projet actif",
+  "mode": "ADD_FEATURE",
+  "goal": "To be refined by the mode workflow",
+  "summary": "All completion gates satisfied.",
+  "status": "COMPLETED",
+  "createdAt": "2026-10-07T16:01:41.091Z",
+  "startSha": "63b16d2396b28af5912dcf6e257270ca2e5c2724",
+  "startStatus": [
+    " M \"projects/les-lunes-de-la-for\\303\\252t/characters.md\"",
+    " M \"projects/les-lunes-de-la-for\\303\\252t/outline.md\"",
+    " M \"projects/les-lunes-de-la-for\\303\\252t/seed.txt\"",
+    " M \"projects/les-lunes-de-la-for\\303\\252t/state.json\"",
+    " M \"projects/les-lunes-de-la-for\\303\\252t/world.md\"",
+    " M .pi/mcp-adapter.json",
+    " M results.tsv",
+    " M state.json",
+    "?? \"projects/les-lunes-de-la-for\\303\\252t/canon.md\"",
+    "?? \"projects/les-lunes-de-la-for\\303\\252t/voice.md\"",
+    "?? projects/test-de-validation-complet/seed.txt",
+    "?? projects/test-de-validation-complet/state.json",
+    "?? verify_browser_and_settings_ui.py"
+  ],
+  "startVersion": "0.1.0",
+  "completedAt": "2026-10-07T17:15:42.754Z",
+  "completionSha": "7ffc15ba0282f07f868775f97061f52235c0cd9d"
+}

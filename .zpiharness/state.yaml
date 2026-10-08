@@ -19,46 +19,7 @@
       "tests": "UNKNOWN"
     }
   },
-  "runningTasks": [
-    {
-      "id": "RUN-1791225342717",
-      "title": "Implémenter la synchronisation bidirectionnelle robuste dans src/pipeline_adapter.py :\n1. Créer les ",
-      "agent": "coder",
-      "status": "INTERRUPTED",
-      "phase": "INTEGRATING",
-      "startedAt": "2026-10-05T18:35:42.719Z",
-      "phaseChangedAt": "2026-10-05T18:39:44.978Z",
-      "leasePaths": [
-        "src/pipeline_adapter.py"
-      ],
-      "modelProvider": "omni",
-      "modelId": "auto/best-free",
-      "thinkingLevel": "medium",
-      "replacesTaskId": "RUN-1791223487824",
-      "recoveryRootId": "RUN-1791223487824",
-      "recoveryAttempts": 1,
-      "recoveryWorktrees": [
-        "/home/zeck/.cache/zpiharness/worktrees/autonovel-w-ui/req-20261004194217-run-1791223487824-cod"
-      ],
-      "worktree": "/home/zeck/.cache/zpiharness/worktrees/autonovel-w-ui/req-20261004194217-run-1791225342717-cod",
-      "projectRoot": "/home/zeck/dev/autonovel-w-ui",
-      "branch": "zpi/req-20261004194217-run-1791225342717-cod",
-      "targetBranch": "dev",
-      "baseSha": "6d6d4d5f606d33a55ccafd8d74cdf546cecc3f91",
-      "rootSnapshotPaths": [],
-      "integrationCode": "ZPI-INT-006",
-      "integrationMessage": "Delegated changes escaped their lease: characters.md, seed.txt, state.json, world.md",
-      "integrationAttempts": 1,
-      "integrationChangedPaths": [
-        "characters.md",
-        "seed.txt",
-        "src/pipeline_adapter.py",
-        "state.json",
-        "world.md"
-      ],
-      "integrationBlockingPaths": []
-    }
-  ],
+  "runningTasks": [],
   "todo": [],
   "pendingDecisions": [],
   "humanObservations": [
@@ -73,9 +34,9 @@
         "Ouvrir http://localhost:8000",
         "Cliquer sur les boutons de pipeline et observer le comportement"
       ],
-      "status": "OPEN",
+      "status": "FIXED",
       "createdAt": "2026-10-05T17:44:31.216Z",
-      "updatedAt": "2026-10-05T17:44:31.216Z"
+      "updatedAt": "2026-10-07T23:21:42.414Z"
     }
   ],
   "specStatus": "UNKNOWN",
