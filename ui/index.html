@@ -26,6 +26,9 @@
         </nav>
 
         <div class="header-actions">
+            <button class="btn btn-sm" id="current-review-btn" title="Current review status">
+                <span class="review-icon">★</span> <span class="review-text">Revue</span>
+            </button>
             <div id="connection-badge" class="connection-badge online">Connecté</div>
             <button class="btn btn-sm" id="inspector-toggle">Inspection</button>
         </div>
@@ -53,16 +56,31 @@
             </div>
         </div>
     </div>
+
+    <!-- Review Details Modal -->
+    <div id="review-modal" class="modal-overlay">
+        <div class="modal-container card">
+            <div class="modal-header">
+                <h3 class="card-title" style="margin-bottom:0;">Revue Actuelle du Manuscrit</h3>
+                <button class="btn btn-sm" id="review-modal-close">Fermer</button>
+            </div>
+            <div class="modal-body" id="review-modal-body">
+                <!-- Loaded dynamically -->
+            </div>
+        </div>
+    </div>
 </div>
 
 <script type="module">
     import { store } from './js/store.js';
     import { initRouter } from './js/router.js';
     import { initInspector } from './js/inspector.js';
+    import { initReviews } from './js/reviews.js';
 
     window.addEventListener('DOMContentLoaded', async () => {
         initRouter();
         initInspector();
+        initReviews();
         await store.init();
 
         // Update connection status badge

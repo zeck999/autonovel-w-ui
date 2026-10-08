@@ -133,8 +133,11 @@ export const api = {
             method: 'POST',
             body: JSON.stringify(payload)
         });
-    }
-,
+    },
+
+    async getLatestReview() {
+        return request('/reviews/latest');
+    },
     async getSettingsKeys() {
         return request('/settings/keys');
     },
