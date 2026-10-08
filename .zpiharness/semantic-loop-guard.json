@@ -1,9 +1,0 @@
-{
-  "version": 1,
-  "requestId": "REQ-20261004194217",
-  "gateFingerprint": "869dc4c6a8086581c977e9f1a6bb7b6357dcd87d4688a55195aba651bdcca6c2",
-  "completionRepeats": 1,
-  "rejectedQuestions": 0,
-  "assessment": "INCOMPLETE: 1 completion gate(s) failed.\n- REQUEST_NOT_ACTIVE: Request REQ-20261004194217 is COMPLETED, not ACTIVE.\nContinue autonomously on actionable items. If progress requires user authority or a scope reduction, open one blocking zpi_question; never announce completion.",
-  "updatedAt": "2026-10-07T23:27:38.324Z"
-}

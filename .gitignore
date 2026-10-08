@@ -8,3 +8,14 @@ __pycache__/
 typeset/*.pdf
 typeset/chapters_content.tex
 *.pdf
+
+# ZPI generated safe ignores
+.zpiharness/
+.cache/
+dist/
+build/
+coverage/
+tmp/
+.pytest_cache/
+*.log
+.env.*
