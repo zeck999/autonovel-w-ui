@@ -20,7 +20,7 @@ La finalité de l'intégration de la Web UI et du back-office FastAPI est de dot
 Le projet repose sur une architecture modulaire strictement cloisonnée :
 
 1. **Back-office API (`src/`)** :
-   - `src/api.py` : Application FastAPI exposant les endpoints REST `/api/projects`, `/api/universes`, `/api/versioning/*`, `/api/pipeline/*`, ainsi que les routes statiques et le fallback SPA pour la Web UI.
+   - `src/api.py` : Application FastAPI exposant les endpoints REST `/api/projects`, `/api/universes`, `/api/versioning/*`, `/api/pipeline/*`, `/api/reviews/latest` (suivi de la critique courante du manuscrit), ainsi que les routes statiques et le fallback SPA pour la Web UI.
    - `src/projects.py` : Gestion CRUD des projets, initialisation des structures de dossiers, scan des chapitres (`chapters/`) et isolation.
    - `src/universes.py` : Gestion des univers partagés et de l'héritage de lore.
    - `src/versioning.py` : Gestion des branches narratives et de l'historique des révisions avec scores.
@@ -40,7 +40,7 @@ Le projet repose sur une architecture modulaire strictement cloisonnée :
 
 ## 3. État Actuel Validé & Preuves Durables
 
-- **Tests unitaires et d'intégration** : Suite de tests validés (`pytest tests/`), incluant `test_api.py`, `test_pipeline.py`, `test_projects.py`, `test_universes.py`, et `test_versioning.py`.
+- **Tests unitaires et d'intégration** : Suite de tests validés (`pytest tests/`), incluant `test_api.py`, `test_pipeline.py`, `test_projects.py`, `test_universes.py`, `test_versioning.py`, et `test_reviews.py`.
 - **Intégration Web UI** :
   - Dashboard interactif (projets récents, statut global du pipeline, actions rapides).
   - Gestion complète des projets et univers partagés.
@@ -55,6 +55,6 @@ Le projet repose sur une architecture modulaire strictement cloisonnée :
 
 ## 4. Réconciliation Spec Kit & Clôture
 
-Ce mémo de projet (`PROJECT_MEMORY.md`) est officiellement rattaché aux spécifications Spec Kit des répertoires `specs/001-web-ui-autonovel/`, `specs/002-chapters-sidebar-editing/` ainsi qu'aux spécifications de la fonctionnalité de gestion des clés API (`specs/settings/`, actuellement spécifiée et planifiée en attente d'implémentation).
+Ce mémo de projet (`PROJECT_MEMORY.md`) est officiellement rattaché aux spécifications Spec Kit des répertoires `specs/001-web-ui-autonovel/`, `specs/002-chapters-sidebar-editing/`, `specs/003-current-review-button/` ainsi qu'aux spécifications de la fonctionnalité de gestion des clés API (`specs/settings/`).
 
 Toute évolution future devra maintenir la stricte cohérence entre ce mémo, les spécifications vivantes (`specs/`) et la suite de tests validée.
