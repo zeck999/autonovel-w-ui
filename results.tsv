@@ -10,3 +10,4 @@ d79c5b9	ch05	7.5	3174	keep	Chapter 5 (attempt 1)
 a09b83d	ch07	7.1	3587	keep	Chapter 7 (attempt 1)
 discarded	foundation	-1.0	0	discard	Iteration 20: no improvement (-1.0 <= 0.0)
 discarded	foundation	-1.0	0	discard	Iteration 20: no improvement (-1.0 <= 0.0)
+d33a8be	revision-cycle-1	0.0	0	cycle	Cycle 1: novel_score 0.0->0.0
