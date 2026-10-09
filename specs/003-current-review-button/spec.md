@@ -48,9 +48,12 @@ When the user hovers over the "Current Review" button, a tooltip appears display
 
 ---
 
-### Edge Cases
-- What happens when `edit_logs/` is empty? → The button shows "Unreviewed" or "No Review" and clicking it prompts the user to run a review.
-- What happens if the API endpoint for reviews fails? → The button gracefully falls back to cached state or shows a disconnected status without breaking the header navigation.
+### Scope Adjustment & Judge API Graceful Error Handling (Context: RUN-1791513004817)
+- **Context**: The judge API (`https://api.anthropic.com/v1/messages`) returns `401 Unauthorized` because no valid API key exists in this test/development environment. Live successful evaluation against Anthropic API is deferred outside the current request scope.
+- **Achievable Scope**: When the judge API fails (401 Unauthorized, 429 Rate Limit, network errors, timeouts), the backend (`evaluate.py` / `pipeline_adapter.py` / `src/api.py`) and UI MUST surface a clear, stable, user-friendly error message (free of raw Python stack traces in UI or API responses), accompanied by a stable support error code (e.g., `ERR_JUDGE_UNAUTHORIZED_401`, `ERR_JUDGE_TIMEOUT`) and a DEBUG diagnostic surface.
+- **Acceptance Scenarios (Graceful Error Path)**:
+  1. **Given** the judge API returns a 401 Unauthorized or timeout error during evaluation, **When** `/api/pipeline/evaluate` is invoked, **Then** the response returns a structured error object with a user-friendly message, stable support error code, and DEBUG diagnostic info without raising unhandled Python tracebacks.
+  2. **Given** evaluation encounters an API failure, **When** tests (`tests/test_reviews.py` or `tests/test_pipeline.py`) run, **Then** the graceful error handling path is fully verified and passing.
 
 ## Requirements *(mandatory)*
 

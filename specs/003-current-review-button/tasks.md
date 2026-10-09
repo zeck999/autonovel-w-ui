@@ -59,3 +59,10 @@ description: "Task list for Current Review Button feature implementation"
 
 - [x] T011 Run pytest tests/test_reviews.py and verify 100% pass rate
 - [x] T012 Verify responsiveness and edge cases (empty edit_logs directory)
+
+## Phase 7: Judge API Graceful Error Handling & Diagnostics (RUN-1791513004817)
+
+**Purpose**: Ensure robust graceful error handling when judge API (Anthropic) fails (401/429/network/timeout), returning user-friendly error messages, stable support error codes, and DEBUG diagnostic output without raw tracebacks.
+
+- [ ] T013 Implement robust error catching and user-friendly error payload mapping for API/network/timeout/401 failures in evaluation/review pipeline execution (`src/pipeline_adapter.py` / `src/api.py`)
+- [ ] T014 Add unit tests in `tests/test_reviews.py` for judge API failure paths (401, timeout, network error) verifying stable support error codes and DEBUG diagnostic surface

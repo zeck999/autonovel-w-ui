@@ -8,6 +8,8 @@
 
 Add a persistent "Current Review" button to the top navigation bar of the Autonovel Web UI (`ui/index.html`). The button displays live review status (star rating/score), shows the underlying review JSON file path (`edit_logs/...`) in a tooltip on hover, and opens a rich review criteria and feedback modal when clicked. Backed by a new FastAPI endpoint (`GET /api/reviews/latest`) that inspects `edit_logs/`.
 
+**Scope Adaptation (RUN-1791513004817)**: Live-API success validation with Anthropic API is deferred outside the current request environment due to absence of valid API keys (401 Unauthorized). The active scope focus is on robust graceful error handling when the judge API fails (401/429/network/timeout), ensuring clean user-friendly error messages, stable support error codes (e.g. `ERR_JUDGE_UNAUTHORIZED_401`), and DEBUG diagnostics without raw tracebacks.
+
 ## Technical Context
 
 **Language/Version**: Python 3.11+, Vanilla JavaScript (ES Modules), HTML5/CSS3
