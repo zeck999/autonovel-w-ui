@@ -64,5 +64,5 @@ description: "Task list for Current Review Button feature implementation"
 
 **Purpose**: Ensure robust graceful error handling when judge API (Anthropic) fails (401/429/network/timeout), returning user-friendly error messages, stable support error codes, and DEBUG diagnostic output without raw tracebacks.
 
-- [ ] T013 Implement robust error catching and user-friendly error payload mapping for API/network/timeout/401 failures in evaluation/review pipeline execution (`src/pipeline_adapter.py` / `src/api.py`)
-- [ ] T014 Add unit tests in `tests/test_reviews.py` for judge API failure paths (401, timeout, network error) verifying stable support error codes and DEBUG diagnostic surface
+- [x] T013 Implement robust error catching and user-friendly error payload mapping for API/network/timeout/401 failures in evaluation/review pipeline execution (`src/pipeline_adapter.py` / `src/api.py`)
+- [x] T014 Add unit tests in `tests/test_reviews.py` for judge API failure paths (401, timeout, network error) verifying stable support error codes and DEBUG diagnostic surface
