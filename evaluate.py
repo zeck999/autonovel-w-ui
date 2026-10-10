@@ -294,14 +294,49 @@ def call_judge(prompt, max_tokens=2000):
         ],
     }
 
-    resp = httpx.post(
-        f"{API_BASE_URL}/v1/messages",
-        headers=headers,
-        json=payload,
-        timeout=180,
-    )
-    resp.raise_for_status()
-    return resp.json()["content"][0]["text"]
+    try:
+        resp = httpx.post(
+            f"{API_BASE_URL}/v1/messages",
+            headers=headers,
+            json=payload,
+            timeout=180,
+        )
+        resp.raise_for_status()
+        return resp.json()["content"][0]["text"]
+    except httpx.HTTPStatusError as e:
+        status_code = e.response.status_code
+        err_text = e.response.text
+        masked_headers = {k: ("***" if k.lower() == "x-api-key" else v) for k, v in headers.items()}
+        timestamp = datetime.now().isoformat()
+
+        print(f"[DEBUG] [{timestamp}] Judge API HTTP error status={status_code}, url={e.request.url}", file=sys.stderr)
+        print(f"[DEBUG] Request headers: {masked_headers}", file=sys.stderr)
+        print(f"[DEBUG] Response body: {err_text}", file=sys.stderr)
+
+        if status_code == 401:
+            print(f"ERR_JUDGE_UNAUTHORIZED_401: Judge API authentication failed (401 Unauthorized). Please check ANTHROPIC_API_KEY in settings or environment.", file=sys.stderr)
+            raise RuntimeError("ERR_JUDGE_UNAUTHORIZED_401: Unauthorized API access")
+        elif status_code == 429:
+            print(f"ERR_JUDGE_RATE_LIMIT_429: Judge API rate limit exceeded (429).", file=sys.stderr)
+            raise RuntimeError("ERR_JUDGE_RATE_LIMIT_429: Rate limit exceeded")
+        else:
+            print(f"ERR_JUDGE_HTTP_{status_code}: Judge API failed with status {status_code}.", file=sys.stderr)
+            raise RuntimeError(f"ERR_JUDGE_HTTP_{status_code}: API error {status_code}")
+    except httpx.TimeoutException as e:
+        timestamp = datetime.now().isoformat()
+        print(f"[DEBUG] [{timestamp}] Judge API timeout: {e}", file=sys.stderr)
+        print(f"ERR_JUDGE_TIMEOUT: Judge API request timed out.", file=sys.stderr)
+        raise RuntimeError("ERR_JUDGE_TIMEOUT: Request timed out")
+    except httpx.RequestError as e:
+        timestamp = datetime.now().isoformat()
+        print(f"[DEBUG] [{timestamp}] Judge API network/request error: {e}", file=sys.stderr)
+        print(f"ERR_JUDGE_NETWORK_ERROR: Judge API network connection failed.", file=sys.stderr)
+        raise RuntimeError("ERR_JUDGE_NETWORK_ERROR: Network connection failed")
+    except Exception as e:
+        timestamp = datetime.now().isoformat()
+        print(f"[DEBUG] [{timestamp}] Judge API unexpected error: {e}", file=sys.stderr)
+        print(f"ERR_JUDGE_ERROR: {e}", file=sys.stderr)
+        raise RuntimeError(f"ERR_JUDGE_ERROR: {e}")
 
 
 def parse_json_response(text):
@@ -787,6 +822,30 @@ def evaluate_full():
     return parse_json_response(raw)
 
 
+def update_state_on_error(error_code: str, error_msg: str):
+    """Update state.json at root and in projects with error details."""
+    state_files = [BASE_DIR / "state.json"]
+    projects_dir = BASE_DIR / "projects"
+    if projects_dir.exists():
+        for p_dir in projects_dir.iterdir():
+            if p_dir.is_dir():
+                state_files.append(p_dir / "state.json")
+
+    for sf in state_files:
+        try:
+            st = {}
+            if sf.exists():
+                with open(sf, "r") as f:
+                    st = json.load(f)
+            st["error_code"] = error_code
+            st["error"] = error_msg
+            sf.parent.mkdir(parents=True, exist_ok=True)
+            with open(sf, "w") as f:
+                json.dump(st, f, indent=2)
+        except Exception as ex:
+            print(f"[DEBUG] Failed to update state file {sf}: {ex}", file=sys.stderr)
+
+
 # --- Main ---
 
 def main():
@@ -800,15 +859,39 @@ def main():
                        help="Evaluate the entire novel")
     args = parser.parse_args()
 
-    if args.phase == "foundation":
-        result = evaluate_foundation()
-        score_key = "overall_score"
-    elif args.chapter is not None:
-        result = evaluate_chapter(args.chapter)
-        score_key = "overall_score"
-    elif args.full:
-        result = evaluate_full()
-        score_key = "novel_score"
+    score_key = "overall_score"
+    try:
+        if args.phase == "foundation":
+            result = evaluate_foundation()
+            score_key = "overall_score"
+        elif args.chapter is not None:
+            result = evaluate_chapter(args.chapter)
+            score_key = "overall_score"
+        elif args.full:
+            result = evaluate_full()
+            score_key = "novel_score"
+    except Exception as e:
+        err_str = str(e)
+        error_code = "ERR_JUDGE_ERROR"
+        if "ERR_JUDGE_UNAUTHORIZED_401" in err_str:
+            error_code = "ERR_JUDGE_UNAUTHORIZED_401"
+        elif "ERR_JUDGE_RATE_LIMIT_429" in err_str:
+            error_code = "ERR_JUDGE_RATE_LIMIT_429"
+        elif "ERR_JUDGE_TIMEOUT" in err_str:
+            error_code = "ERR_JUDGE_TIMEOUT"
+        elif "ERR_JUDGE_NETWORK_ERROR" in err_str:
+            error_code = "ERR_JUDGE_NETWORK_ERROR"
+
+        update_state_on_error(error_code, err_str)
+
+        result = {
+            "error": err_str,
+            "error_code": error_code,
+            "overall_score": 0.0,
+            "novel_score": 0.0,
+            "note": "Evaluation failed due to judge API error. See DEBUG logs and error_code."
+        }
+        score_key = "overall_score" if args.phase or args.chapter is not None else "novel_score"
 
     # Print structured output
     print("---")

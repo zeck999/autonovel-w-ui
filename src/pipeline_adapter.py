@@ -262,11 +262,43 @@ def evaluate_project(project_id: Optional[str] = None, chapter_num: Optional[int
             except ValueError:
                 pass
 
+        error_code = None
+        for code in ["ERR_JUDGE_UNAUTHORIZED_401", "ERR_JUDGE_RATE_LIMIT_429", "ERR_JUDGE_TIMEOUT", "ERR_JUDGE_NETWORK_ERROR", "ERR_JUDGE_ERROR"]:
+            if code in res.stdout or code in res.stderr:
+                error_code = code
+                break
+        if not error_code and res.returncode != 0:
+            error_code = "ERR_JUDGE_ERROR"
+
+        # Update state.json in lease / project / root
+        state_files = [BASE_DIR / "state.json"]
+        if project_id:
+            p_state = BASE_DIR / "projects" / project_id / "state.json"
+            if p_state.exists():
+                state_files.append(p_state)
+
+        for sf in state_files:
+            if sf.exists():
+                try:
+                    with open(sf, "r") as f:
+                        st = json.load(f)
+                    if error_code:
+                        st["error_code"] = error_code
+                        st["error"] = res.stderr or res.stdout[-300:]
+                    else:
+                        st.pop("error_code", None)
+                        st.pop("error", None)
+                    with open(sf, "w") as f:
+                        json.dump(st, f, indent=2)
+                except Exception:
+                    pass
+
         return {
             "returncode": res.returncode,
             "output": res.stdout,
             "error": res.stderr if res.returncode != 0 else None,
+            "error_code": error_code,
             "score": score
         }
     except Exception as e:
-        return {"returncode": -1, "output": "", "error": str(e), "score": None}
+        return {"returncode": -1, "output": "", "error": str(e), "error_code": "ERR_JUDGE_EXCEPTION", "score": None}

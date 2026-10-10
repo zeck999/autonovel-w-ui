@@ -3,6 +3,7 @@ Unit tests for src/pipeline_adapter.py and pipeline execution
 """
 
 import pytest
+import json
 from unittest.mock import patch, MagicMock
 from src.pipeline_adapter import run_pipeline_phase, evaluate_project, get_pipeline_status, BASE_DIR
 from src.api import app
@@ -69,3 +70,22 @@ def test_api_pipeline_run_error_raises_400(mock_run):
     response = client.post("/api/pipeline/run", json={"phase": "foundation"})
     assert response.status_code == 400
     assert "detail" in response.json()
+
+@patch("src.pipeline_adapter.subprocess.run")
+def test_evaluate_project_judge_unauthorized_401(mock_run):
+    mock_res = MagicMock()
+    mock_res.returncode = 1
+    mock_res.stdout = "ERR_JUDGE_UNAUTHORIZED_401: Judge API authentication failed (401 Unauthorized)."
+    mock_res.stderr = "[DEBUG] [2026-10-10T12:00:00] Judge API HTTP error status=401, url=https://api.anthropic.com/v1/messages"
+    mock_run.return_value = mock_res
+
+    res = evaluate_project()
+    assert res["error_code"] == "ERR_JUDGE_UNAUTHORIZED_401"
+    
+    # Verify state.json was updated with error_code
+    state_file = BASE_DIR / "state.json"
+    if state_file.exists():
+        with open(state_file) as f:
+            st = json.load(f)
+            assert st.get("error_code") == "ERR_JUDGE_UNAUTHORIZED_401"
+
