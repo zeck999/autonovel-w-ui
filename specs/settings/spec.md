@@ -49,6 +49,20 @@ The system ensures that raw API keys are never exposed in plaintext logs, error 
 
 ---
 
+### User Story 4 - Pre-Flight API Key Checks & .env Synchronization (Priority: P1)
+The system performs pre-flight checks and synchronizes `.env` configuration with runtime environment variables (`os.environ`), ensuring robust execution and graceful error handling when keys are missing or invalid.
+
+**Why this priority**: Guarantees that applications detect misconfigured or missing credentials before running generation phases and handles errors gracefully without crashing or leaking secrets.
+
+**Independent Test**: Verify that missing `.env` files auto-initialize from `.env.example`, runtime environment variables update synchronously on write, and pre-flight tests handle timeouts and invalid keys gracefully.
+
+**Acceptance Scenarios**:
+1. **Given** a missing `.env` file, **When** settings or pipeline operations start, **Then** `.env` is automatically initialized from `.env.example` (or fallback template) and synchronized with runtime environment variables (`os.environ`).
+2. **Given** pipeline execution or API key testing runs, **When** pre-flight checks validate API keys, **Then** unconfigured or placeholder keys trigger clean pre-flight error messages or warnings rather than unhandled exceptions.
+3. **Given** network timeouts, connection drops, or authentication errors occur during API calls or key testing, **When** errors are caught, **Then** graceful error handling returns user-friendly error messages (e.g., connection timeout, unauthorized) while sanitizing and masking any secret credentials in logs and responses.
+
+---
+
 ### Edge Cases
 - What happens when `.env` does not exist yet? → The system automatically initializes a new `.env` file based on `.env.example`.
 - What happens during a timeout when testing an API key? → The test endpoint catches network timeouts and returns a clean error response ("Connection timeout with provider").
@@ -64,6 +78,9 @@ The system ensures that raw API keys are never exposed in plaintext logs, error 
 - **FR-004**: Web UI MUST provide a dedicated Settings view (`ui/js/views/settings.js`) with input fields, mask/unmask toggles, save actions, and per-key test buttons with real-time feedback.
 - **FR-005**: System MUST mask API keys in all API responses and console logs.
 - **FR-006**: System MUST automatically create or update `.env` preserving existing unedited variables.
+- **FR-007**: System MUST perform pre-flight API key validation before executing AI-dependent tasks or pipeline phases.
+- **FR-008**: System MUST synchronize `.env` file updates bidirectionally with runtime environment variables (`os.environ`) and preserve existing unedited variables.
+- **FR-009**: System MUST handle network timeouts, HTTP errors (401/429/5xx), and connection failures gracefully, returning structured, sanitized error messages without exposing API keys or tracebacks.
 
 ### Key Entities
 
@@ -78,6 +95,7 @@ The system ensures that raw API keys are never exposed in plaintext logs, error 
 - **SC-002**: Zero plaintext API keys appear in API responses or server logs.
 - **SC-003**: 100% of settings API endpoints are covered by automated unit and integration tests (`tests/test_settings.py`).
 - **SC-004**: API key connection tests return response within 5 seconds under normal network conditions.
+- **SC-005**: 100% of pre-flight check, `.env` synchronization, and error handling pathways are covered by automated unit and integration tests (`tests/test_settings.py`, `tests/test_settings_e2e.py`).
 
 ## Assumptions
 

@@ -6,7 +6,7 @@
 
 ## Summary
 
-Implement backend REST endpoints and Web UI interface for viewing, securely updating, and testing AI provider API keys (`ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY`, `FAL_KEY`) stored in the `.env` file, with secure masking and real-time connection testing.
+Implement backend REST endpoints and Web UI interface for viewing, securely updating, and testing AI provider API keys (`ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY`, `FAL_KEY`) stored in the `.env` file, with secure masking, real-time connection testing, pre-flight API key validation, bidirectional `.env` / `os.environ` synchronization, and robust error handling.
 
 ## Technical Context
 
@@ -24,7 +24,7 @@ Implement backend REST endpoints and Web UI interface for viewing, securely upda
 
 **Performance Goals**: Key test results returned in <5s; UI updates instantly
 
-**Constraints**: Zero plaintext key leakage in logs or API responses
+**Constraints**: Zero plaintext key leakage in logs or API responses; robust handling of network timeouts, 401/429 HTTP errors, and missing environment files.
 
 ## Constitution Check
 

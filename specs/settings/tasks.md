@@ -52,3 +52,11 @@ description: "Tâches pour l'implémentation de la fonctionnalité de test et d'
 - [x] T013 Implémenter la logique de test de connexion et l'endpoint (`POST /api/settings/keys/test`) per FR-003, US2
 - [x] T014 Implémenter la vue Web UI Paramètres (`ui/js/views/settings.js`), le lien de navigation et l'enregistrement dans le routeur per FR-004, US1
 - [x] T015 Implémenter la suite de tests unitaires et d'intégration (`tests/test_settings.py`) et valider avec pytest per SC-003, US3
+
+---
+
+## Phase 7 : Pre-Flight Checks, .env Synchronization & Error Handling
+
+- [x] T016 [US4] Implémenter la synchronisation bidirectionnelle `.env` / `os.environ` et l'initialisation automatique depuis `.env.example` per FR-006, FR-008.
+- [x] T017 [US4] Implémenter la validation pré-vol (pre-flight checks) des clés API avant exécution des phases de pipeline et tâches AI per FR-007.
+- [x] T018 [US4] Implémenter la gestion robuste des erreurs (Timeouts, 401/429/5xx, erreurs réseau) avec masquage des secrets et messages conviviaux per FR-005, FR-009, SC-005.
