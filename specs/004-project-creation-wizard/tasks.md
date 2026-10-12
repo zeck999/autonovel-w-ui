@@ -19,8 +19,8 @@ description: "Task list for Project Creation Wizard feature"
 
 **Purpose**: Initialize test structure and backend/frontend hooks for wizard feature
 
-- [ ] T001 Create test file `tests/test_wizard.py` for wizard backend logic
-- [ ] T002 [P] Register wizard routes schema in `specs/004-project-creation-wizard/contracts/api.json`
+- [x] T001 Create test file `tests/test_wizard.py` for wizard backend logic
+- [x] T002 [P] Register wizard routes schema in `specs/004-project-creation-wizard/contracts/api.json`
 
 ---
 
@@ -28,8 +28,8 @@ description: "Task list for Project Creation Wizard feature"
 
 **Purpose**: Core data structures and backend helper methods for wizard parameter handling
 
-- [ ] T003 Implement wizard data models and validation schemas in `src/projects.py`
-- [ ] T004 [P] Implement base lore file generator functions (`world.md`, `characters.md`, `canon.md`, `outline.md`) in `src/projects.py`
+- [x] T003 Implement wizard data models and validation schemas in `src/projects.py`
+- [x] T004 [P] Implement base lore file generator functions (`world.md`, `characters.md`, `canon.md`, `outline.md`) in `src/projects.py`
 
 ---
 
@@ -39,9 +39,9 @@ description: "Task list for Project Creation Wizard feature"
 
 **Independent Test**: Verify wizard modal renders accordion steps correctly with contextual examples.
 
-- [ ] T005 [P] [US1] Create accordion wizard view and components in `ui/js/views/projects.js`
-- [ ] T006 [US1] Add step-by-step examples and helper tooltips in `ui/js/views/projects.js`
-- [ ] T007 [US1] Add expand/collapse and navigation controls between wizard accordion sections in `ui/js/views/projects.js`
+- [x] T005 [P] [US1] Create accordion wizard view and components in `ui/js/views/projects.js`
+- [x] T006 [US1] Add step-by-step examples and helper tooltips in `ui/js/views/projects.js`
+- [x] T007 [US1] Add expand/collapse and navigation controls between wizard accordion sections in `ui/js/views/projects.js`
 
 **Checkpoint**: User Story 1 UI is fully testable independently.
 
@@ -53,9 +53,9 @@ description: "Task list for Project Creation Wizard feature"
 
 **Independent Test**: Verify clicking "Generate 4 AI Choices" returns 4 options and populates the selected parameter field.
 
-- [ ] T008 [P] [US2] Implement backend endpoint `POST /api/projects/wizard/suggest` in `src/api.py` and `src/projects.py`
-- [ ] T009 [US2] Implement API client method for AI suggestions in `ui/js/api.js`
-- [ ] T010 [US2] Wire up "Generate 4 AI Choices" button and modal choice selector in `ui/js/views/projects.js`
+- [x] T008 [P] [US2] Implement backend endpoint `POST /api/projects/wizard/suggest` in `src/api.py` and `src/projects.py`
+- [x] T009 [US2] Implement API client method for AI suggestions in `ui/js/api.js`
+- [x] T010 [US2] Wire up "Generate 4 AI Choices" button and modal choice selector in `ui/js/views/projects.js`
 
 **Checkpoint**: User Stories 1 and 2 work together.
 
@@ -67,9 +67,9 @@ description: "Task list for Project Creation Wizard feature"
 
 **Independent Test**: Complete wizard, submit validation, and verify all lore files and `state.json` are created under `projects/`.
 
-- [ ] T011 [P] [US3] Implement final summary review screen in `ui/js/views/projects.js`
-- [ ] T012 [US3] Implement backend project creation validation endpoint `POST /api/projects/wizard/create` in `src/api.py` and `src/projects.py`
-- [ ] T013 [US3] Ensure automatic generation of `seed.txt`, `world.md`, `characters.md`, `canon.md`, `outline.md`, and `state.json` in `src/projects.py`
+- [x] T011 [P] [US3] Implement final summary review screen in `ui/js/views/projects.js`
+- [x] T012 [US3] Implement backend project creation validation endpoint `POST /api/projects/wizard/create` in `src/api.py` and `src/projects.py`
+- [x] T013 [US3] Ensure automatic generation of `seed.txt`, `world.md`, `characters.md`, `canon.md`, `outline.md`, and `state.json` in `src/projects.py`
 
 **Checkpoint**: All user stories fully functional.
 
@@ -79,9 +79,9 @@ description: "Task list for Project Creation Wizard feature"
 
 **Purpose**: Testing, edge case hardening, and documentation updates.
 
-- [ ] T014 [P] Add comprehensive backend unit tests in `tests/test_wizard.py`
-- [ ] T015 Run quickstart validation per `specs/004-project-creation-wizard/quickstart.md`
-- [ ] T016 [P] Code cleanup and refactoring across wizard modules
+- [x] T014 [P] Add comprehensive backend unit tests in `tests/test_wizard.py`
+- [x] T015 Run quickstart validation per `specs/004-project-creation-wizard/quickstart.md`
+- [x] T016 [P] Code cleanup and refactoring across wizard modules
 
 ---
 

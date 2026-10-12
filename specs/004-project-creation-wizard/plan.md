@@ -64,3 +64,12 @@ tests/
 ```
 
 **Structure Decision**: Web application structure with FastAPI backend and vanilla JS frontend under `ui/`.
+
+## Implementation Status
+
+- **Status**: Completed & Verified
+- **Components Implemented**:
+  - Backend wizard validation & suggestion schemas in `src/projects.py` and API endpoints in `src/api.py`.
+  - Accordion wizard UI view, step-by-step guidance, AI suggestions selector, and summary review in `ui/js/views/projects.js` and `ui/js/api.js`.
+  - Automated generation of foundational/lore files (`seed.txt`, `world.md`, `characters.md`, `canon.md`, `outline.md`, and `state.json`) upon successful wizard validation.
+  - Comprehensive unit and integration test coverage.
