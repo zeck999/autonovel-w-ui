@@ -35,11 +35,11 @@ description: "Task list for Project Creation and Workspace Initialization featur
 
 ---
 
-## Phase 4: Extended AI Wizard Features (Deferred / Future Enhancement)
+## Phase 4: Extended AI Wizard Features & Refinement
 
-- [ ] T008 [P] [US2] Implement backend endpoint `POST /api/projects/wizard/suggest` for AI suggestions in `src/api.py` and `src/projects.py`
-- [ ] T009 [US2] Implement API client method for AI suggestions in `ui/js/api.js`
-- [ ] T010 [US2] Wire up "Generate AI Choices" button and choice selector in `ui/js/views/projects.js`
+- [x] T008 [P] [US2] Implement backend endpoint `POST /api/projects/wizard/suggest` for AI suggestions in `src/api.py` and `src/projects.py`
+- [x] T009 [US2] Implement API client method for AI suggestions in `ui/js/api.js`
+- [x] T010 [US2] Wire up "Generate AI Choices" button and choice selector in `ui/js/views/projects.js`
 
 ---
 
