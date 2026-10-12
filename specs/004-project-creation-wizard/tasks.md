@@ -1,12 +1,10 @@
 ---
-description: "Task list for Project Creation Wizard feature"
+description: "Task list for Project Creation and Workspace Initialization feature (Reconciled with effective implementation)"
 ---
 
-# Tasks: Project Creation Wizard
+# Tasks: Project Creation & Workspace Initialization
 
-**Input**: Design documents from `specs/004-project-creation-wizard/`
-
-**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/api.json
+**Input**: Design documents from `specs/004-project-creation-wizard/` and effective codebase implementation (`src/projects.py`, `src/api.py`, `ui/js/views/projects.js`, `tests/test_projects.py`)
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -15,82 +13,47 @@ description: "Task list for Project Creation Wizard feature"
 
 ---
 
-## Phase 1: Setup (Shared Infrastructure)
+## Phase 1: Setup & Testing Infrastructure
 
-**Purpose**: Initialize test structure and backend/frontend hooks for wizard feature
-
-- [x] T001 Create test file `tests/test_wizard.py` for wizard backend logic
-- [x] T002 [P] Register wizard routes schema in `specs/004-project-creation-wizard/contracts/api.json`
+- [x] T001 Implement comprehensive project unit tests in `tests/test_projects.py` for backend CRUD and file management
+- [x] T002 [P] Document API contracts in `specs/004-project-creation-wizard/contracts/api.json`
 
 ---
 
-## Phase 2: Foundational (Blocking Prerequisites)
+## Phase 2: Foundational Project Management & Workspace Generation
 
-**Purpose**: Core data structures and backend helper methods for wizard parameter handling
-
-- [x] T003 Implement wizard data models and validation schemas in `src/projects.py`
-- [x] T004 [P] Implement base lore file generator functions (`world.md`, `characters.md`, `canon.md`, `outline.md`) in `src/projects.py`
+- [x] T003 Implement project data models and validation schemas (`ProjectCreate`, `ProjectResponse`) in `src/projects.py`
+- [x] T004 [P] Implement workspace initialization, unique slugification, `seed.txt`, `state.json`, and shared universe inheritance in `src/projects.py`
 
 ---
 
-## Phase 3: User Story 1 - Guided Project Creation Wizard UI with Accordion Layout (Priority: P1) 🎯 MVP
+## Phase 3: Project Creation UI (Priority: P1)
 
-**Goal**: Provide an accordion/section-based wizard interface with step-by-step examples in the web UI.
-
-**Independent Test**: Verify wizard modal renders accordion steps correctly with contextual examples.
-
-- [x] T005 [P] [US1] Create accordion wizard view and components in `ui/js/views/projects.js`
-- [x] T006 [US1] Add step-by-step examples and helper tooltips in `ui/js/views/projects.js`
-- [x] T007 [US1] Add expand/collapse and navigation controls between wizard accordion sections in `ui/js/views/projects.js`
-
-**Checkpoint**: User Story 1 UI is fully testable independently.
+- [x] T005 [P] [US1] Create project creation form and active project selector in `ui/js/views/projects.js`
+- [x] T006 [US1] Add contextual placeholders and input validation in `ui/js/views/projects.js`
+- [x] T007 [US1] Add project selection, deletion, and file management navigation controls in `ui/js/views/projects.js`
 
 ---
 
-## Phase 4: User Story 2 - Free-Choice Input and 4 AI-Generated Choices per Parameter (Priority: P2)
+## Phase 4: Extended AI Wizard Features (Deferred / Future Enhancement)
 
-**Goal**: Support free-form custom input and backend/frontend integration for generating 4 AI choices per parameter.
-
-**Independent Test**: Verify clicking "Generate 4 AI Choices" returns 4 options and populates the selected parameter field.
-
-- [x] T008 [P] [US2] Implement backend endpoint `POST /api/projects/wizard/suggest` in `src/api.py` and `src/projects.py`
-- [x] T009 [US2] Implement API client method for AI suggestions in `ui/js/api.js`
-- [x] T010 [US2] Wire up "Generate 4 AI Choices" button and modal choice selector in `ui/js/views/projects.js`
-
-**Checkpoint**: User Stories 1 and 2 work together.
+- [ ] T008 [P] [US2] Implement backend endpoint `POST /api/projects/wizard/suggest` for AI suggestions in `src/api.py` and `src/projects.py`
+- [ ] T009 [US2] Implement API client method for AI suggestions in `ui/js/api.js`
+- [ ] T010 [US2] Wire up "Generate AI Choices" button and choice selector in `ui/js/views/projects.js`
 
 ---
 
-## Phase 5: User Story 3 - Final Validation and Full Foundational/Lore Files Generation (Priority: P3)
+## Phase 5: Final Validation & Workspace Initialization (Priority: P3)
 
-**Goal**: Implement final summary review screen and automatic generation of all foundational/lore files upon validation.
-
-**Independent Test**: Complete wizard, submit validation, and verify all lore files and `state.json` are created under `projects/`.
-
-- [x] T011 [P] [US3] Implement final summary review screen in `ui/js/views/projects.js`
-- [x] T012 [US3] Implement backend project creation validation endpoint `POST /api/projects/wizard/create` in `src/api.py` and `src/projects.py`
-- [x] T013 [US3] Ensure automatic generation of `seed.txt`, `world.md`, `characters.md`, `canon.md`, `outline.md`, and `state.json` in `src/projects.py`
-
-**Checkpoint**: All user stories fully functional.
+- [x] T011 [P] [US3] Implement project list summary and file inspection interface in `ui/js/views/projects.js`
+- [x] T012 [US3] Implement backend project creation endpoint `POST /api/projects` in `src/api.py` and `src/projects.py`
+- [x] T013 [US3] Ensure automatic generation of `seed.txt`, `state.json`, and standard workspace subdirectories (`chapters/`, `briefs/`, etc.) in `src/projects.py`
 
 ---
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-**Purpose**: Testing, edge case hardening, and documentation updates.
-
-- [x] T014 [P] Add comprehensive backend unit tests in `tests/test_wizard.py`
+- [x] T014 [P] Run and verify test suite via `pytest tests/test_projects.py`
 - [x] T015 Run quickstart validation per `specs/004-project-creation-wizard/quickstart.md`
-- [x] T016 [P] Code cleanup and refactoring across wizard modules
+- [x] T016 [P] Code cleanup and refactoring across project management modules
 
----
-
-## Dependencies & Execution Order
-
-### Phase Dependencies
-- Setup (Phase 1) → Foundational (Phase 2) → User Story 1 (Phase 3) → User Story 2 (Phase 4) → User Story 3 (Phase 5) → Polish (Phase 6)
-
-### Parallel Opportunities
-- T002 and T004 can run in parallel during setup/foundational phases.
-- T005 and T008 can be developed in parallel across frontend and backend.
-- T014 and T016 can run in parallel during polish.
