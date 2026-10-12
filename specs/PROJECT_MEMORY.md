@@ -1,7 +1,7 @@
 # PROJECT_MEMORY.md — Mémo de Projet Autonovel & Spécifications Spec Kit
 
 **Date de création** : 2026-10-04  
-**Date de mise à jour REQ-20261006161752** : 2026-10-06  
+**Date de mise à jour REQ-20261012095042** : 2026-10-12  
 **Statut** : Acté, validé et synchronisé avec le Spec Kit  
 **Périmètre** : Projet Autonovel — Pipeline autonome de rédaction de romans par IA avec back-office FastAPI, Web UI interactive (SPA), et gestion multi-projet.
 
@@ -21,7 +21,7 @@ Le projet repose sur une architecture modulaire strictement cloisonnée :
 
 1. **Back-office API (`src/`)** :
    - `src/api.py` : Application FastAPI exposant les endpoints REST `/api/projects`, `/api/universes`, `/api/versioning/*`, `/api/pipeline/*`, `/api/reviews/latest` (suivi de la critique courante du manuscrit), ainsi que les routes statiques et le fallback SPA pour la Web UI.
-   - `src/projects.py` : Gestion CRUD des projets, initialisation des structures de dossiers, scan des chapitres (`chapters/`) et isolation.
+   - `src/projects.py` : Gestion CRUD des projets, initialisation des structures de dossiers, scan des chapitres (`chapters/`), isolation et génération automatique des fichiers de fondation et de lore (`seed.txt`, `world.md`, `characters.md`, `canon.md`, `outline.md`, `state.json`) via l'assistant wizard (`/api/projects/wizard/create`, `/api/projects/wizard/suggest`).
    - `src/universes.py` : Gestion des univers partagés et de l'héritage de lore.
    - `src/versioning.py` : Gestion des branches narratives et de l'historique des révisions avec scores.
    - `src/pipeline_adapter.py` : Adaptateur d'exécution du pipeline avec **synchronisation bidirectionnelle multi-projet** (`sync_project_to_root` / `sync_root_to_project`) et isolation par projet (`projects/{project_id}`).
@@ -30,7 +30,7 @@ Le projet repose sur une architecture modulaire strictement cloisonnée :
 2. **Web UI SPA (`ui/`)** :
    - `ui/index.html` : Fichiers statiques uniques et point d'entrée SPA avec chargement asynchrone des modules CSS/JS.
    - `ui/css/style.css` : Thème visuel élégant (EB Garamond / Bebas Neue, palettes `#0a0a08`, `#e8e4db`, `#daa548`).
-   - `ui/js/` : Modules autonomes (`api.js`, `store.js`, `router.js`, `inspector.js` et vues `dashboard.js`, `projects.js`, `universes.js`, `branches.js`, `pipeline.js`, `foundation.js`).
+   - `ui/js/` : Modules autonomes (`api.js`, `store.js`, `router.js`, `inspector.js` et vues `dashboard.js`, `projects.js` incluant l'assistant de création wizard en accordéon avec exemples contextuels et sélecteur de choix IA, `universes.js`, `branches.js`, `pipeline.js`, `foundation.js`).
    - `ui/js/views/settings.js` *(Spécifié & Planifié)* : Vue Paramètres et Clés API (`specs/settings/`).
 
 3. **Pipeline & Outils CLI (`*.py`, `specs/`, `typeset/`)** :
@@ -46,6 +46,7 @@ Le projet repose sur une architecture modulaire strictement cloisonnée :
   - Gestion complète des projets et univers partagés.
   - Pilotage du pipeline en temps réel avec volet d'inspection rétractable et logging dynamique.
   - Mode review-only (évaluation critique via `/api/pipeline/evaluate`).
+  - Assistant de création de projet en mode wizard (en accordéon/sections) avec aide contextuelle, saisie libre et 4 suggestions IA par paramètre (`/api/projects/wizard/suggest`, `/api/projects/wizard/create`).
   - Édition et sauvegarde asynchrone des fichiers de fondation et de lore (`world.md`, `characters.md`, `outline.md`, `canon.md`) ainsi que des chapitres narratifs (`chapters/*.md`) via la section dédiée dans la barre latérale de l'éditeur.
 - **Hygiène du worktree & verrouillage strict du scope** :
   - Le répertoire de stockage des projets générés (`projects/`) est strictement exclu du versioning Git (`.gitignore`).
@@ -55,6 +56,6 @@ Le projet repose sur une architecture modulaire strictement cloisonnée :
 
 ## 4. Réconciliation Spec Kit & Clôture
 
-Ce mémo de projet (`PROJECT_MEMORY.md`) est officiellement rattaché aux spécifications Spec Kit des répertoires `specs/001-web-ui-autonovel/`, `specs/002-chapters-sidebar-editing/`, `specs/003-current-review-button/` ainsi qu'aux spécifications de la fonctionnalité de gestion des clés API (`specs/settings/`).
+Ce mémo de projet (`PROJECT_MEMORY.md`) est officiellement rattaché aux spécifications Spec Kit des répertoires `specs/001-web-ui-autonovel/`, `specs/002-chapters-sidebar-editing/`, `specs/003-current-review-button/`, `specs/004-project-creation-wizard/` ainsi qu'aux spécifications de la fonctionnalité de gestion des clés API (`specs/settings/`).
 
 Toute évolution future devra maintenir la stricte cohérence entre ce mémo, les spécifications vivantes (`specs/`) et la suite de tests validée.
