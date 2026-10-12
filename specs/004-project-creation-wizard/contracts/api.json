@@ -1,0 +1,37 @@
+{
+  "endpoints": [
+    {
+      "path": "/api/projects/wizard/suggest",
+      "method": "POST",
+      "description": "Generate 4 AI suggestions for a specific wizard field based on current parameters.",
+      "request_body": {
+        "field_key": "string",
+        "current_parameters": "object"
+      },
+      "response": {
+        "suggestions": ["string", "string", "string", "string"]
+      }
+    },
+    {
+      "path": "/api/projects/wizard/create",
+      "method": "POST",
+      "description": "Validate and create a new project with full foundational and lore files generated.",
+      "request_body": {
+        "name": "string",
+        "concept": "string",
+        "genre": "string",
+        "tone": "string",
+        "protagonist": "string",
+        "conflict": "string",
+        "world_setting": "string",
+        "universe_id": "string (optional)"
+      },
+      "response": {
+        "id": "string",
+        "name": "string",
+        "status": "success",
+        "created_at": "string"
+      }
+    }
+  ]
+}
