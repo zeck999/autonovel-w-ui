@@ -1,7 +1,7 @@
 # PROJECT_MEMORY.md — Mémo de Projet Autonovel & Spécifications Spec Kit
 
 **Date de création** : 2026-10-04  
-**Date de mise à jour REQ-20261013170707** : 2026-10-13  
+**Date de mise à jour REQ-20261013170707** : 2026-10-13T17:07:07Z (post-browser validation completed)  
 **Statut** : Acté, validé et synchronisé avec le Spec Kit  
 **Périmètre** : Projet Autonovel — Pipeline autonome de rédaction de romans par IA avec back-office FastAPI, Web UI interactive (SPA), et gestion multi-projet.
 
