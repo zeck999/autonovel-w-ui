@@ -56,6 +56,6 @@ Le projet repose sur une architecture modulaire strictement cloisonnée :
 
 ## 4. Réconciliation Spec Kit & Clôture
 
-Ce mémo de projet (`PROJECT_MEMORY.md`) est officiellement rattaché aux spécifications Spec Kit des répertoires `specs/001-web-ui-autonovel/`, `specs/002-chapters-sidebar-editing/`, `specs/003-current-review-button/`, `specs/004-project-creation-wizard/` ainsi qu'aux spécifications de la fonctionnalité de gestion des clés API (`specs/settings/`).
+Ce mémo de projet (`PROJECT_MEMORY.md`) est officiellement rattaché aux spécifications Spec Kit des répertoires `specs/001-web-ui-autonovel/`, `specs/002-chapters-sidebar-editing/`, `specs/003-current-review-button/`, `specs/004-project-creation-wizard/`, `specs/005-wizard-verification-chrome-devtools/` ainsi qu'aux spécifications de la fonctionnalité de gestion des clés API (`specs/settings/`).
 
 Toute évolution future devra maintenir la stricte cohérence entre ce mémo, les spécifications vivantes (`specs/`) et la suite de tests validée.
