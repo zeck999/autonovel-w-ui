@@ -1,7 +1,7 @@
 # PROJECT_MEMORY.md — Mémo de Projet Autonovel & Spécifications Spec Kit
 
 **Date de création** : 2026-10-04  
-**Date de mise à jour REQ-20261012095042** : 2026-10-12  
+**Date de mise à jour REQ-20261013170707** : 2026-10-13  
 **Statut** : Acté, validé et synchronisé avec le Spec Kit  
 **Périmètre** : Projet Autonovel — Pipeline autonome de rédaction de romans par IA avec back-office FastAPI, Web UI interactive (SPA), et gestion multi-projet.
 
@@ -46,7 +46,7 @@ Le projet repose sur une architecture modulaire strictement cloisonnée :
   - Gestion complète des projets et univers partagés.
   - Pilotage du pipeline en temps réel avec volet d'inspection rétractable et logging dynamique.
   - Mode review-only (évaluation critique via `/api/pipeline/evaluate`).
-  - Assistant de création de projet en mode wizard (en accordéon/sections) avec aide contextuelle, saisie libre et 4 suggestions IA par paramètre (`/api/projects/wizard/suggest`, `/api/projects/wizard/create`).
+  - Assistant de création de projet en mode wizard (en accordéon/sections) avec aide contextuelle, saisie libre et 4 suggestions IA par paramètre (`/api/projects/wizard/suggest`, `/api/projects/wizard/create`), validé avec succès par test navigateur end-to-end (création du roman 'the').
   - Édition et sauvegarde asynchrone des fichiers de fondation et de lore (`world.md`, `characters.md`, `outline.md`, `canon.md`) ainsi que des chapitres narratifs (`chapters/*.md`) via la section dédiée dans la barre latérale de l'éditeur.
 - **Hygiène du worktree & verrouillage strict du scope** :
   - Le répertoire de stockage des projets générés (`projects/`) est strictement exclu du versioning Git (`.gitignore`).
