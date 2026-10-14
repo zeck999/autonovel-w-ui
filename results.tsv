@@ -16,3 +16,4 @@ f7bbaef	revision-cycle-3	0.0	0	cycle	Cycle 3: novel_score 0.0->0.0
 6ac8bb8	revision-cycle-1	-1.0	440	cycle	Cycle 1: novel_score 0.0->-1.0
 d2b52c0	revision-cycle-2	-1.0	440	cycle	Cycle 2: novel_score -1.0->-1.0
 99794d1	revision-cycle-3	-1.0	440	cycle	Cycle 3: novel_score -1.0->-1.0
+discarded	foundation	0.0	0	discard	Iteration 20: no improvement (0.0 <= 0.0)
