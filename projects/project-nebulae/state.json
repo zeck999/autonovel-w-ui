@@ -1,0 +1,22 @@
+{
+  "id": "project-nebulae",
+  "name": "Project Nebulae",
+  "concept": "An astronomer discovers signals from an ancient Dyson sphere.",
+  "genre": "Hard Science-Fiction",
+  "tone": "Atmospheric & Contemplative",
+  "protagonist": "Dr. Elena Vance, deep-space astrophysicist",
+  "conflict": "Deciphering an extraterrestrial beacon before military forces quarantine the signal",
+  "world_setting": "An orbital observatory drifting near the dark edge of the Kuiper belt",
+  "universe_id": "",
+  "created_at": "2026-10-14T18:23:08.944049",
+  "phase": "foundation",
+  "current_focus": "planning",
+  "iteration": 0,
+  "foundation_score": 0.85,
+  "lore_score": 0.8,
+  "chapters_drafted": 0,
+  "chapters_total": 10,
+  "novel_score": 0.0,
+  "revision_cycle": 0,
+  "debts": []
+}
