@@ -12,8 +12,8 @@
    ```bash
    python main.py
    ```
-2. **Open Wizard**:
-   Navigate to the Projects page in the Web UI and click "New Project (Wizard)".
+2. **Open Assistant Créatif Wizard**:
+   Click the "Assistant Créatif" button in the navigation bar right next to Dashboard in the Web UI to launch the interactive Assistant Créatif wizard view.
 3. **Interact with Accordion Layout**:
    - Expand accordion sections (Concept, Genre/Tone, Characters, World).
    - Observe step-by-step examples and helper text.

@@ -10,18 +10,19 @@
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Guided Project Creation Wizard UI with Accordion Layout (Priority: P1)
+### User Story 1 - Assistant Créatif Navigation Button and Guided Wizard UI with Accordion Layout (Priority: P1)
 
-As a creative writer using Autonovel, I want to create a new project through an intuitive accordion/section-based wizard interface with step-by-step examples, so that I can define my novel's premise, genre, characters, and world without feeling overwhelmed by a single giant form.
+As a creative writer using Autonovel, I want to access the interactive "Assistant Créatif" directly via a dedicated button in the navigation bar right next to Dashboard, and create a new project through an intuitive accordion/section-based wizard interface with step-by-step examples.
 
-**Why this priority**: P1 delivers the core user-facing workflow and reduces cognitive load during project inception, which is critical for creative flow.
+**Why this priority**: P1 delivers immediate discoverability via the navigation bar and the core user-facing workflow, reducing cognitive load during project inception.
 
-**Independent Test**: Can be fully tested by opening the project creation wizard in the web UI, navigating through accordion sections, viewing examples, and verifying the layout renders correctly.
+**Independent Test**: Can be fully tested by clicking the "Assistant Créatif" button in the navigation bar right next to Dashboard, verifying navigation to the interactive wizard view, and navigating through accordion sections.
 
 **Acceptance Scenarios**:
 
-1. **Given** the user opens the new project modal or page, **When** the wizard loads, **Then** it presents an accordion/section layout (e.g., Concept, Genre & Tone, Characters, World Lore) with clear step-by-step guidance and examples.
-2. **Given** the user is viewing a wizard section, **When** they click to expand/collapse sections, **Then** sections toggle smoothly while preserving entered state.
+1. **Given** the user views the navigation bar in the web UI, **When** inspecting the items right next to Dashboard, **Then** an "Assistant Créatif" button is present and clearly visible.
+2. **Given** the user clicks the "Assistant Créatif" button, **When** the view loads, **Then** it displays the interactive Assistant Créatif wizard view with an accordion/section layout (Concept, Genre & Tone, Characters, World Lore), step-by-step guidance, and examples.
+3. **Given** the user is viewing a wizard section, **When** they click to expand/collapse sections, **Then** sections toggle smoothly while preserving entered state.
 
 ---
 
@@ -65,6 +66,7 @@ As a creator, I want to review my final wizard summary before validation and hav
 
 ### Functional Requirements
 
+- **FR-000**: The system MUST provide an "Assistant Créatif" button in the navigation bar right next to Dashboard, routing directly to the interactive Assistant Créatif wizard view.
 - **FR-001**: The system MUST provide an interactive wizard interface organized into accordion/section steps (Concept, Genre/Tone, Characters, Lore/World).
 - **FR-002**: Each wizard step/parameter MUST display contextual step-by-step examples and helper descriptions to guide the user.
 - **FR-003**: Users MUST be able to provide custom free-choice text input for any wizard parameter.

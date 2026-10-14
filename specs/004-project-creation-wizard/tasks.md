@@ -27,8 +27,9 @@ description: "Task list for Project Creation and Workspace Initialization featur
 
 ---
 
-## Phase 3: Project Creation UI (Priority: P1)
+## Phase 3: Project Creation UI & Navigation (Priority: P1)
 
+- [x] T004.1 [US1] Add 'Assistant Créatif' button in the navigation bar right next to Dashboard in `ui/index.html` and wire routing in `ui/js/router.js`
 - [x] T005 [P] [US1] Create project creation form and active project selector in `ui/js/views/projects.js`
 - [x] T006 [US1] Add contextual placeholders and input validation in `ui/js/views/projects.js`
 - [x] T007 [US1] Add project selection, deletion, and file management navigation controls in `ui/js/views/projects.js`

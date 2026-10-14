@@ -6,7 +6,7 @@
 
 ## Summary
 
-Build an interactive project creation wizard feature featuring an accordion/section layout, step-by-step contextual examples, free-choice input combined with 4 AI-generated choices per parameter, and automatic generation of full foundational/lore files (`seed.txt`, `world.md`, `characters.md`, `canon.md`, `outline.md`, `state.json`) upon final validation.
+Build an interactive project creation wizard feature accessed via an 'Assistant Créatif' button in the navigation bar right next to Dashboard, featuring an accordion/section layout, step-by-step contextual examples, free-choice input combined with 4 AI-generated choices per parameter, and automatic generation of full foundational/lore files (`seed.txt`, `world.md`, `characters.md`, `canon.md`, `outline.md`, `state.json`) upon final validation.
 
 ## Technical Context
 
