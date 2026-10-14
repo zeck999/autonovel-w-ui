@@ -52,7 +52,7 @@ As a creator, I want to review my final wizard summary before validation and hav
 **Acceptance Scenarios**:
 
 1. **Given** the user has filled out the wizard sections, **When** they reach the final validation step and click "Create Project", **Then** the system displays a summary review of all parameters.
-2. **Given** the user confirms creation, **When** the backend processes the request, **Then** it generates `seed.txt`, `world.md`, `characters.md`, `canon.md`, `outline.md`, and `state.json` inside the project directory and redirects to the project dashboard.
+2. **Given** the user confirms creation by clicking the '✨ Create Project & Generate Files' button (wired via form submit handler in `ui/js/views/projects.js` to call `api.wizardCreate(wizardState)`), **When** the backend processes the request via `POST /api/projects/wizard/create`, **Then** it generates `seed.txt`, `world.md`, `characters.md`, `canon.md`, `outline.md`, and `state.json` inside the project directory and redirects/switches to the project dashboard with success notification.
 
 ---
 

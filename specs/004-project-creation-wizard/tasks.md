@@ -49,6 +49,7 @@ description: "Task list for Project Creation and Workspace Initialization featur
 - [x] T011 [P] [US3] Implement project list summary and file inspection interface in `ui/js/views/projects.js`
 - [x] T012 [US3] Implement backend project creation endpoint `POST /api/projects` in `src/api.py` and `src/projects.py`
 - [x] T013 [US3] Ensure automatic generation of `seed.txt`, `state.json`, and standard workspace subdirectories (`chapters/`, `briefs/`, etc.) in `src/projects.py`
+- [x] T013.1 [US3] Wire and verify '✨ Create Project & Generate Files' click handler / form submission in `ui/js/views/projects.js` invoking `api.wizardCreate` and verify via `tests/test_wizard.py`
 
 ---
 
