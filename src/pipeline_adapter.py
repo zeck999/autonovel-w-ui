@@ -218,6 +218,8 @@ def run_pipeline_phase(phase: str, project_id: Optional[str] = None, max_cycles:
         status = get_pipeline_status(project_id)
         if res.returncode == 0:
             status["phase"] = phase
+            status.pop("error", None)
+            status.pop("error_code", None)
         
         # Ajouter les informations de sortie
         status["last_run_output"] = res.stdout[-500:] if res.stdout else ""

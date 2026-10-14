@@ -73,6 +73,7 @@ def list_projects() -> List[Dict]:
                         meta.update(data)
                 except Exception:
                     pass
+            meta["id"] = p_dir.name
             seed_file = p_dir / "seed.txt"
             if seed_file.exists() and not meta.get("concept"):
                 meta["concept"] = seed_file.read_text().strip()
@@ -157,6 +158,7 @@ def get_project(project_id: str) -> Optional[Dict]:
                 state.update(data)
         except Exception:
             pass
+    state["id"] = project_id
     seed_file = p_path / "seed.txt"
     if seed_file.exists() and not state.get("concept"):
         state["concept"] = seed_file.read_text().strip()

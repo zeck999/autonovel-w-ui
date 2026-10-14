@@ -58,3 +58,20 @@ def test_project_files_functions():
     assert any(f["name"] == chapter_path for f in files_list)
 
     delete_project(pid)
+
+def test_existing_projects_consistency():
+    projects = list_projects()
+    project_ids = [p["id"] for p in projects]
+    assert "project-nebulae" in project_ids
+    assert "the-clock-work-empire" in project_ids
+
+    nebulae = get_project("project-nebulae")
+    assert nebulae is not None
+    assert nebulae["id"] == "project-nebulae"
+    assert nebulae["name"] == "Project Nebulae"
+
+    empire = get_project("the-clock-work-empire")
+    assert empire is not None
+    assert empire["id"] == "the-clock-work-empire"
+    assert empire["name"] == "The Clock Work Empire"
+
