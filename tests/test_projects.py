@@ -64,6 +64,7 @@ def test_existing_projects_consistency():
     project_ids = [p["id"] for p in projects]
     assert "project-nebulae" in project_ids
     assert "the-clock-work-empire" in project_ids
+    assert "chronicles-of-the-astral-vault" in project_ids
 
     nebulae = get_project("project-nebulae")
     assert nebulae is not None
@@ -74,4 +75,9 @@ def test_existing_projects_consistency():
     assert empire is not None
     assert empire["id"] == "the-clock-work-empire"
     assert empire["name"] == "The Clock Work Empire"
+
+    vault = get_project("chronicles-of-the-astral-vault")
+    assert vault is not None
+    assert vault["id"] == "chronicles-of-the-astral-vault"
+    assert vault["name"] == "Chronicles of the Astral Vault"
 
