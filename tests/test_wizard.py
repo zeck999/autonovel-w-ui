@@ -50,3 +50,20 @@ def test_wizard_create_endpoint():
 
     # Clean up
     delete_project(pid)
+
+def test_wizard_create_minimal_payload():
+    payload = {
+        "name": "Minimal Wizard Novel",
+        "concept": "A minimal hook without secondary details."
+    }
+    response = client.post("/api/projects/wizard/create", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    pid = data["id"]
+    assert data["name"] == "Minimal Wizard Novel"
+    assert data["genre"] == ""
+
+    proj = get_project(pid)
+    assert proj is not None
+
+    delete_project(pid)

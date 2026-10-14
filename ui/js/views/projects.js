@@ -47,7 +47,7 @@ export function renderProjects(container) {
                     <button class="btn btn-sm ${activeStep === 5 ? 'btn-primary' : ''}" data-wizard-step="5">5. Summary & Create</button>
                 </div>
 
-                <form id="wizard-form">
+                <form id="wizard-form" novalidate>
                     <!-- Step 1: Concept & Title -->
                     <div class="wizard-step-panel" data-step="1" style="display: ${activeStep === 1 ? 'block' : 'none'};">
                         <h3 style="color: var(--accent); margin-bottom: 1rem; font-family: var(--font-display);">Step 1: Project Title & Core Premise</h3>
@@ -175,7 +175,7 @@ export function renderProjects(container) {
 
                         <div style="display: flex; justify-content: space-between; margin-top: 1.5rem;">
                             <button type="button" class="btn" data-action="prev-step">&larr; Back</button>
-                            <button type="submit" class="btn btn-primary" style="background: var(--success); border-color: var(--success);">✨ Create Project & Generate Files</button>
+                            <button type="button" id="btn-create-wizard" data-action="create-project-wizard" class="btn btn-primary" style="background: var(--success); border-color: var(--success);">✨ Create Project & Generate Files</button>
                         </div>
                     </div>
                 </form>
@@ -380,25 +380,55 @@ export function renderProjects(container) {
     });
 
     // Wizard Form submission (Final step create project)
+    const handleWizardSubmit = async (e) => {
+        if (e) e.preventDefault();
+        syncWizardStateFromDOM();
+
+        if (!wizardState.name || !wizardState.name.trim()) {
+            alert('Please enter a Project Title (Step 1: Project Title).');
+            activeStep = 1;
+            renderProjects(container);
+            return;
+        }
+
+        if (!wizardState.concept || !wizardState.concept.trim()) {
+            alert('Please enter a Core Concept / Premise (Step 1: Core Concept).');
+            activeStep = 1;
+            renderProjects(container);
+            return;
+        }
+
+        const submitBtn = container.querySelector('[data-action="create-project-wizard"]') || container.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating Project & Generating Files...';
+        }
+
+        try {
+            const newProj = await api.wizardCreate(wizardState);
+            store.setActiveProject(newProj.id);
+            await store.refreshGlobalData();
+            // Reset wizard state
+            wizardState = { name: '', concept: '', universe_id: '', genre: '', tone: '', protagonist: '', conflict: '', world_setting: '' };
+            activeStep = 1;
+            renderProjects(container);
+            alert(`Project "${newProj.name}" created successfully with all lore files generated!`);
+        } catch (err) {
+            alert(`Error creating project via wizard: ${err.message}`);
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '✨ Create Project & Generate Files';
+            }
+        }
+    };
+
     const wizardForm = document.getElementById('wizard-form');
     if (wizardForm) {
-        wizardForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            syncWizardStateFromDOM();
-
-            try {
-                const newProj = await api.wizardCreate(wizardState);
-                store.setActiveProject(newProj.id);
-                await store.refreshGlobalData();
-                // Reset wizard state
-                wizardState = { name: '', concept: '', universe_id: '', genre: '', tone: '', protagonist: '', conflict: '', world_setting: '' };
-                activeStep = 1;
-                renderProjects(container);
-                alert(`Project "${newProj.name}" created successfully with all lore files generated!`);
-            } catch (err) {
-                alert(`Error creating project via wizard: ${err.message}`);
-            }
-        });
+        wizardForm.addEventListener('submit', handleWizardSubmit);
+    }
+    const createWizardBtn = container.querySelector('[data-action="create-project-wizard"]');
+    if (createWizardBtn) {
+        createWizardBtn.addEventListener('click', handleWizardSubmit);
     }
 
     // Active project select dropdown

@@ -21,11 +21,11 @@ class ProjectCreate(BaseModel):
 class WizardCreate(BaseModel):
     name: str
     concept: str
-    genre: str
-    tone: str
-    protagonist: str
-    conflict: str
-    world_setting: str
+    genre: str = ""
+    tone: str = ""
+    protagonist: str = ""
+    conflict: str = ""
+    world_setting: str = ""
     universe_id: Optional[str] = None
 
 class ProjectResponse(BaseModel):
