@@ -1,0 +1,19 @@
+{
+  "id": "sg-213-3l",
+  "name": "SG-213-3L",
+  "concept": "Autour de l'\u00e9toile SG-213-3L, Ted Stunner l'explorateur spatial d\u00e9couvre les reste d'une civilisation.",
+  "universe_id": null,
+  "created_at": "2026-10-12T19:43:06.573160",
+  "phase": "drafting",
+  "current_focus": "chapter_drafting",
+  "iteration": 20,
+  "foundation_score": 0.0,
+  "lore_score": 0.0,
+  "chapters_drafted": 0,
+  "chapters_total": 24,
+  "novel_score": 0.0,
+  "revision_cycle": 0,
+  "debts": [],
+  "error_code": "ERR_JUDGE_UNAUTHORIZED_401",
+  "error": "ERR_JUDGE_UNAUTHORIZED_401: Unauthorized API access"
+}

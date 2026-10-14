@@ -1,0 +1,19 @@
+{
+  "id": "the",
+  "name": "the",
+  "concept": "A philosophical novel about the definite article 'the' and its meaning.",
+  "universe_id": null,
+  "created_at": "2026-10-13T19:39:09.985207",
+  "phase": "foundation",
+  "current_focus": "planning",
+  "iteration": 0,
+  "foundation_score": 0.0,
+  "lore_score": 0.0,
+  "chapters_drafted": 0,
+  "chapters_total": 0,
+  "novel_score": 0.0,
+  "revision_cycle": 0,
+  "debts": [],
+  "error_code": "ERR_JUDGE_UNAUTHORIZED_401",
+  "error": "ERR_JUDGE_UNAUTHORIZED_401: Unauthorized API access"
+}

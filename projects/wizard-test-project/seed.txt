@@ -1,0 +1,1 @@
+Testing the wizard button functionality successfully.
