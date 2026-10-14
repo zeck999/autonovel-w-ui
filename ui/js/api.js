@@ -43,6 +43,20 @@ export const api = {
         });
     },
 
+    async wizardSuggest(payload) {
+        return request('/projects/wizard/suggest', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+    },
+
+    async wizardCreate(payload) {
+        return request('/projects/wizard/create', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+    },
+
     async getProject(projectId) {
         return request(`/projects/${projectId}`);
     },

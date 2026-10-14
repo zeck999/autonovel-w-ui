@@ -12,6 +12,7 @@ import { renderSettings } from './views/settings.js';
 
 const routes = {
     '#/dashboard': renderDashboard,
+    '#/assistant': renderProjects,
     '#/projects': renderProjects,
     '#/universes': renderUniverses,
     '#/files': renderFiles,

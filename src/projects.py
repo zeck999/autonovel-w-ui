@@ -18,6 +18,16 @@ class ProjectCreate(BaseModel):
     concept: str
     universe_id: Optional[str] = None
 
+class WizardCreate(BaseModel):
+    name: str
+    concept: str
+    genre: str
+    tone: str
+    protagonist: str
+    conflict: str
+    world_setting: str
+    universe_id: Optional[str] = None
+
 class ProjectResponse(BaseModel):
     id: str
     name: str
@@ -158,6 +168,159 @@ def delete_project(project_id: str) -> bool:
         shutil.rmtree(p_path)
         return True
     return False
+
+def wizard_suggest(field_key: str, current_parameters: Dict[str, str]) -> List[str]:
+    suggestions_map = {
+        "concept": [
+            "A clockwork artisan discovers an illegal cog that controls human memories.",
+            "In a world where sunlight is rationed, a botanist grows the first forbidden glowing flower.",
+            "An intergalactic archivist finds a manuscript detailing the end of the universe that hasn't happened yet.",
+            "A detective investigates murders where the victims' shadows refuse to follow them."
+        ],
+        "genre": [
+            "Cyberpunk / Tech Noir",
+            "Epic High Fantasy",
+            "Hard Science Fiction",
+            "Gothic Mystery / Suspense"
+        ],
+        "tone": [
+            "Dark, Gritty & Atmospheric",
+            "Witty, Fast-paced & Adventurous",
+            "Melancholic & Philosophical",
+            "Suspenseful, Tense & Psychological"
+        ],
+        "protagonist": [
+            "A cynical archival clerk with a hidden robotic arm and a penchant for forbidden lore.",
+            "An exiled princess masquerading as a mercenary to reclaim her throne.",
+            "A weary starship salvage engineer haunted by a ghost in the machine.",
+            "An idealistic magistrate who uncovers systemic corruption in the capital."
+        ],
+        "conflict": [
+            "Stopping a cascading collapse of the planetary power grid before midnight.",
+            "Uncovering the conspiracy behind the disappearance of the upper echelons of society.",
+            "Escaping a collapsing orbital colony while carrying the last seed bank of Earth.",
+            "Proving innocence in a murder where all evidence points to an AI construct."
+        ],
+        "world_setting": [
+            "A multi-tiered vertical city built inside a colossal hollow mountain.",
+            "A dying solar system where humanity lives on massive wandering dreadnoughts.",
+            "An archipelago of floating islands suspended in a perpetual storm sea.",
+            "A subterranean empire powered by geothermal vents and ancient runes."
+        ]
+    }
+    return suggestions_map.get(field_key, [
+        "Alternative option A for " + field_key,
+        "Alternative option B for " + field_key,
+        "Alternative option C for " + field_key,
+        "Alternative option D for " + field_key
+    ])
+
+def create_project_from_wizard(payload: WizardCreate) -> Dict:
+    ensure_projects_dir()
+    pid = slugify(payload.name)
+    p_path = PROJECTS_DIR / pid
+    counter = 1
+    base_pid = pid
+    while p_path.exists():
+        pid = f"{base_pid}-{counter}"
+        p_path = PROJECTS_DIR / pid
+        counter += 1
+
+    p_path.mkdir(parents=True, exist_ok=True)
+    (p_path / "chapters").mkdir(exist_ok=True)
+    (p_path / "briefs").mkdir(exist_ok=True)
+    (p_path / "edit_logs").mkdir(exist_ok=True)
+    (p_path / "eval_logs").mkdir(exist_ok=True)
+
+    # 1. seed.txt
+    (p_path / "seed.txt").write_text(payload.concept, encoding="utf-8")
+
+    # 2. world.md
+    world_content = f"""# World Setting: {payload.name}
+
+## Overview & Environment
+{payload.world_setting}
+
+## Genre & Tone
+- **Genre**: {payload.genre}
+- **Tone**: {payload.tone}
+"""
+    (p_path / "world.md").write_text(world_content, encoding="utf-8")
+
+    # 3. characters.md
+    chars_content = f"""# Characters & Entities
+
+## Protagonist
+{payload.protagonist}
+
+## Central Conflict & Stakes
+{payload.conflict}
+"""
+    (p_path / "characters.md").write_text(chars_content, encoding="utf-8")
+
+    # 4. canon.md
+    canon_content = f"""# Story Canon & Rules
+
+- **Core Premise**: {payload.concept}
+- **Genre Conventions**: {payload.genre}
+- **Atmospheric Tone**: {payload.tone}
+"""
+    (p_path / "canon.md").write_text(canon_content, encoding="utf-8")
+
+    # 5. outline.md
+    outline_content = f"""# Novel Outline: {payload.name}
+
+## Act I: Setup & Inciting Incident
+- Introduction of {payload.protagonist} within {payload.world_setting}.
+- The emergence of the inciting conflict: {payload.conflict}.
+
+## Act II: Rising Action & Complications
+- Exploration of consequences and rising tensions.
+- Confronting opposition and secondary obstacles.
+
+## Act III: Climax & Resolution
+- The peak confrontation regarding {payload.conflict}.
+- Resolution and aftermath.
+"""
+    (p_path / "outline.md").write_text(outline_content, encoding="utf-8")
+
+    # If universe_id provided, copy shared files
+    if payload.universe_id:
+        universe_path = BASE_DIR / "universes" / payload.universe_id
+        if universe_path.exists():
+            for fname in ["world.md", "characters.md", "canon.md"]:
+                u_file = universe_path / fname
+                if u_file.exists():
+                    shutil.copy(u_file, p_path / fname)
+
+    from datetime import datetime
+    state = {
+        "id": pid,
+        "name": payload.name,
+        "concept": payload.concept,
+        "genre": payload.genre,
+        "tone": payload.tone,
+        "protagonist": payload.protagonist,
+        "conflict": payload.conflict,
+        "world_setting": payload.world_setting,
+        "universe_id": payload.universe_id,
+        "created_at": datetime.now().isoformat(),
+        "phase": "foundation",
+        "current_focus": "planning",
+        "iteration": 0,
+        "foundation_score": 0.85,
+        "lore_score": 0.80,
+        "chapters_drafted": 0,
+        "chapters_total": 10,
+        "novel_score": 0.0,
+        "revision_cycle": 0,
+        "debts": []
+    }
+    state_file = p_path / "state.json"
+    with open(state_file, "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=2)
+
+    return state
 
 STANDARD_PROJECT_FILES = ["seed.txt", "world.md", "characters.md", "outline.md", "canon.md"]
 

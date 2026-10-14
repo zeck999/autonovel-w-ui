@@ -12,7 +12,7 @@ import json
 from typing import Optional, List, Dict
 from pydantic import BaseModel
 
-from src.projects import list_projects, create_project, get_project, delete_project, list_project_files, get_project_file, save_project_file, ProjectCreate
+from src.projects import list_projects, create_project, get_project, delete_project, list_project_files, get_project_file, save_project_file, ProjectCreate, WizardCreate, wizard_suggest, create_project_from_wizard
 from src.universes import list_universes, create_universe, get_universe, delete_universe, UniverseCreate
 from src.versioning import list_branches, create_branch, switch_branch, get_revision_history
 from src.pipeline_adapter import get_pipeline_status, run_pipeline_phase, evaluate_project
@@ -38,6 +38,19 @@ def api_list_projects():
 @app.post("/api/projects", response_model=Dict)
 def api_create_project(payload: ProjectCreate):
     return create_project(name=payload.name, concept=payload.concept, universe_id=payload.universe_id)
+
+class WizardSuggestRequest(BaseModel):
+    field_key: str
+    current_parameters: Optional[Dict[str, str]] = {}
+
+@app.post("/api/projects/wizard/suggest", response_model=Dict)
+def api_wizard_suggest(payload: WizardSuggestRequest):
+    suggestions = wizard_suggest(payload.field_key, payload.current_parameters or {})
+    return {"field_key": payload.field_key, "suggestions": suggestions}
+
+@app.post("/api/projects/wizard/create", response_model=Dict)
+def api_wizard_create(payload: WizardCreate):
+    return create_project_from_wizard(payload)
 
 @app.get("/api/projects/{project_id}", response_model=Dict)
 def api_get_project(project_id: str):
