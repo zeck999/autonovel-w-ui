@@ -75,7 +75,8 @@ When the AI backend service encounters errors (such as missing API keys, rate li
 - **SC-002**: AI modification request successfully dispatches and updates the editor content upon completion.
 - **SC-003**: 100% test coverage for the new chapter modification API endpoint and UI integration.
 
-## Assumptions
+## Assumptions & Scope Reduction
 
 - Chapter files are located within the `chapters/` subdirectory of the active project.
 - AI revision utilizes existing pipeline revision helpers (`gen_revision.py` or direct LLM client calls via `src/pipeline_adapter.py` / `src/api.py`).
+- **Scope Reduction & Validation Contract**: Due to browser test environment limitations in the isolated container, live browser E2E test execution is scoped out. Backend API integration, frontend UI implementation (`ui/js/api.js`, `ui/js/views/files.js`, `ui/css/style.css`), and rigorous unit/integration tests (`tests/test_chapter_ai.py`) constitute the complete and confirmed validation contract.
