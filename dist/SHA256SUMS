@@ -1,0 +1,9 @@
+# Release artifacts for autonovel 0.2.0
+# version commit: d0875d7b7b942fcf87f25e42a6ecf13657592f87
+# built: 2026-10-20T01:09:55Z
+
+507cd49f196b479b0d42fb844f2de2102c00979893e88cd5d62c1bb2cb5edd49  dist/autonovel-0.2.0-py3-none-any.whl
+bbab00f28fe8acd90380c9f26dc8cf6dcefc4f333dc46d873e2cf00488a865f1  dist/autonovel-0.2.0.tar.gz
+
+dist/autonovel-0.2.0-py3-none-any.whl  size=14590  mtime=2026-10-20 03:07:24.519653192 +0200
+dist/autonovel-0.2.0.tar.gz  size=22489  mtime=2026-10-20 03:07:22.951738549 +0200
