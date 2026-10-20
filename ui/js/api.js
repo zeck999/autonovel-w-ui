@@ -168,5 +168,12 @@ export const api = {
             method: 'POST',
             body: JSON.stringify(payload)
         });
+    },
+
+    async modifyChapterWithAI(projectId, filePath, content, prompt) {
+        return request(`/projects/${projectId}/chapters/modify`, {
+            method: 'POST',
+            body: JSON.stringify({ file_path: filePath, content, prompt })
+        });
     }
 };

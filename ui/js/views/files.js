@@ -100,6 +100,15 @@ export async function renderFiles(container) {
                         <button id="save-file-btn" class="btn btn-primary">Sauvegarder</button>
                     </div>
                 </div>
+
+                ${selectedFile.startsWith('chapters/') ? `
+                    <div id="ai-modifier-toolbar" style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-surface-hover); border: 1px solid var(--border-color); border-radius: 4px;">
+                        <input type="text" id="ai-prompt-input" class="form-control" placeholder="Instruction IA (ex: Rendre le dialogue plus tendu, ajouter des détails sensoriels...)" style="flex: 1; font-size: 0.9rem;">
+                        <button id="ai-modify-btn" class="btn btn-sm btn-primary" title="Modifier le chapitre avec l'IA">✨ Modifier avec l'IA</button>
+                        <span id="ai-modify-status" style="font-size: 0.85rem; color: var(--text-muted); white-space: nowrap;"></span>
+                    </div>
+                ` : ''}
+
                 <div class="form-group" style="margin-bottom: 0;">
                     <textarea id="file-editor-textarea" class="form-control" style="font-family: monospace; font-size: 0.95rem; min-height: 500px; line-height: 1.5; resize: vertical;" placeholder="Contenu du fichier Markdown...">${escapeHtml(fileContent)}</textarea>
                 </div>
@@ -131,6 +140,38 @@ export async function renderFiles(container) {
                 statusSpan.textContent = `Erreur : ${err.message}`;
             } finally {
                 saveBtn.disabled = false;
+            }
+        });
+    }
+
+    const aiModifyBtn = document.getElementById('ai-modify-btn');
+    const aiPromptInput = document.getElementById('ai-prompt-input');
+    const aiModifyStatus = document.getElementById('ai-modify-status');
+
+    if (aiModifyBtn && aiPromptInput && textarea) {
+        aiModifyBtn.addEventListener('click', async () => {
+            const promptText = aiPromptInput.value.trim();
+            if (!promptText) {
+                aiModifyStatus.textContent = 'Veuillez saisir une instruction pour l’IA.';
+                aiModifyStatus.style.color = 'var(--danger)';
+                return;
+            }
+            aiModifyBtn.disabled = true;
+            aiPromptInput.disabled = true;
+            aiModifyStatus.textContent = 'IA en cours...';
+            aiModifyStatus.style.color = 'var(--accent)';
+            try {
+                const res = await api.modifyChapterWithAI(pid, selectedFile, textarea.value, promptText);
+                textarea.value = res.content;
+                aiModifyStatus.textContent = '✓ Chapitre modifié avec succès !';
+                aiModifyStatus.style.color = 'var(--success)';
+                setTimeout(() => { aiModifyStatus.textContent = ''; }, 4000);
+            } catch (err) {
+                aiModifyStatus.textContent = `Erreur : ${err.message}`;
+                aiModifyStatus.style.color = 'var(--danger)';
+            } finally {
+                aiModifyBtn.disabled = false;
+                aiPromptInput.disabled = false;
             }
         });
     }

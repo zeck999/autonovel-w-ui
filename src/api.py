@@ -211,6 +211,116 @@ def api_test_settings_key(payload: KeyTestRequest):
     return verify_api_key(payload.provider, payload.api_key)
 
 
+# --- Chapter AI Modification Endpoint ---
+class ChapterModifyPayload(BaseModel):
+    file_path: str
+    content: str
+    prompt: str
+
+@app.post("/api/projects/{project_id}/chapters/modify", response_model=Dict)
+def api_modify_chapter_ai(project_id: str, payload: ChapterModifyPayload):
+    proj = get_project(project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    import os
+    import httpx
+    import logging
+    logger = logging.getLogger(__name__)
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key or api_key.startswith("your-") or "your-" in api_key:
+        logger.error("ERR_AI_MOD_KEY_MISSING: ANTHROPIC_API_KEY is not configured.")
+        raise HTTPException(
+            status_code=400,
+            detail="ERR_AI_MOD_KEY_MISSING: ANTHROPIC_API_KEY n'est pas configurée. Veuillez configurer votre clé API dans les Paramètres."
+        )
+
+    writer_model = os.environ.get("AUTONOVEL_WRITER_MODEL", "claude-sonnet-4-6")
+    api_base = os.environ.get("AUTONOVEL_API_BASE_URL", "https://api.anthropic.com")
+
+    project_dir = Path(__file__).resolve().parent.parent / "projects" / project_id
+    voice = (project_dir / "voice.md").read_text() if (project_dir / "voice.md").exists() else ""
+    characters = (project_dir / "characters.md").read_text() if (project_dir / "characters.md").exists() else ""
+    world = (project_dir / "world.md").read_text() if (project_dir / "world.md").exists() else ""
+
+    system_prompt = (
+        "You are an expert novel writing assistant modifying a chapter based on specific user revision instructions. "
+        "You preserve the voice, world, and characters while implementing the requested changes precisely. "
+        "You write the FULL chapter content. Do not truncate or summarize."
+    )
+
+    user_prompt = f"""Modify the following chapter according to the user instruction.
+
+USER INSTRUCTION / PROMPT:
+{payload.prompt}
+
+EXISTING CHAPTER CONTENT:
+{payload.content}
+
+{f"VOICE DEFINITION:\\n{voice}" if voice else ""}
+{f"CHARACTER REGISTRY:\\n{characters}" if characters else ""}
+{f"WORLD BIBLE:\\n{world}" if world else ""}
+
+Return the complete modified chapter text now."""
+
+    headers = {
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
+        "anthropic-beta": "context-1m-2025-08-07",
+        "content-type": "application/json",
+    }
+
+    try:
+        resp = httpx.post(
+            f"{api_base}/v1/messages",
+            headers=headers,
+            json={
+                "model": writer_model,
+                "max_tokens": 16000,
+                "temperature": 0.8,
+                "system": system_prompt,
+                "messages": [{"role": "user", "content": user_prompt}]
+            },
+            timeout=120.0
+        )
+        if resp.status_code == 401:
+            logger.error("ERR_AI_MOD_UNAUTHORIZED_401: API authentication failed.")
+            raise HTTPException(status_code=401, detail="ERR_AI_MOD_UNAUTHORIZED_401: Clé API Anthropic invalide ou non autorisée.")
+        elif resp.status_code == 429:
+            logger.error("ERR_AI_MOD_RATE_LIMIT_429: Rate limit exceeded.")
+            raise HTTPException(status_code=429, detail="ERR_AI_MOD_RATE_LIMIT_429: Trop de requêtes (rate limit).")
+        elif resp.status_code >= 400:
+            logger.error(f"ERR_AI_MOD_ERROR: API error {resp.status_code}: {resp.text}")
+            raise HTTPException(status_code=500, detail=f"ERR_AI_MOD_ERROR: Erreur API externe ({resp.status_code}).")
+
+        data = resp.json()
+        modified_content = data["content"][0]["text"]
+
+        success = save_project_file(project_id, payload.file_path, modified_content)
+        if not success:
+            logger.error(f"ERR_AI_MOD_SAVE_FAILED: Failed to save modified chapter to {payload.file_path}")
+            raise HTTPException(status_code=500, detail="ERR_AI_MOD_SAVE_FAILED: Impossible d'enregistrer le chapitre modifié.")
+
+        return {
+            "file_path": payload.file_path,
+            "content": modified_content,
+            "status": "success",
+            "message": "Chapter modified successfully with AI"
+        }
+    except httpx.TimeoutException:
+        logger.error("ERR_AI_MOD_TIMEOUT: AI request timed out.")
+        raise HTTPException(status_code=504, detail="ERR_AI_MOD_TIMEOUT: La requête IA a expiré (timeout).")
+    except httpx.RequestError as e:
+        logger.error(f"ERR_AI_MOD_NETWORK_ERROR: Network error: {e}")
+        raise HTTPException(status_code=502, detail=f"ERR_AI_MOD_NETWORK_ERROR: Erreur réseau: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"ERR_AI_MOD_ERROR: Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail=f"ERR_AI_MOD_ERROR: Erreur inattendue: {str(e)}")
+
+
 # --- Reviews Endpoints ---
 @app.get("/api/reviews/latest", response_model=Dict)
 def api_get_latest_review():
