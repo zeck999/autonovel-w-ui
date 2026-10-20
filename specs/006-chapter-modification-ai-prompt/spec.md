@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-20
 
-**Status**: Draft
+**Status**: Completed
 
 **Input**: User description: "Create Spec Kit specification, plan, and tasks for adding chapter modification with AI and a prompt field (Option A: toolbar prompt field) in autonovel-w-ui."
 

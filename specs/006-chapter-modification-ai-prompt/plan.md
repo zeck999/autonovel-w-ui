@@ -1,6 +1,6 @@
 # Implementation Plan: Chapter Modification with AI & Toolbar Prompt Field (Option A)
 
-**Branch**: `006-chapter-modification-ai-prompt` | **Date**: 2026-10-20 | **Status**: Draft | **Spec**: [spec.md](./spec.md)
+**Branch**: `006-chapter-modification-ai-prompt` | **Date**: 2026-10-20 | **Status**: Completed | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/006-chapter-modification-ai-prompt/spec.md`
 
