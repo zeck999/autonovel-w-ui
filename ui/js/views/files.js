@@ -4,8 +4,14 @@
 
 import { store } from '../store.js';
 import { api } from '../api.js';
+import { canLeaveEditor, setNavigationGuard, clearNavigationGuard, draftKey, saveDraft, readDraft, canonicalChapterName } from '../editor-state.js';
+
+let renderSequence = 0;
+window.addEventListener('autonovel-navigation', () => { renderSequence += 1; });
 
 export async function renderFiles(container) {
+    const sequence = ++renderSequence;
+    clearNavigationGuard();
     const state = store.state;
     const pid = state.activeProjectId;
 
@@ -38,10 +44,19 @@ export async function renderFiles(container) {
             const res = await api.getProjectFile(pid, selectedFile);
             fileContent = res.content || '';
         } catch (err) {
-            fileContent = `# ${selectedFile}\n\n(Fichier vide ou non trouvé — commencez à rédiger ici.)`;
+            if (err.status !== 404) {
+                container.innerHTML = `<div class="card"><p>Impossible de charger le fichier : ${escapeHtml(err.message)}</p></div>`;
+                return;
+            }
+            fileContent = '';
         }
     }
 
+    if (sequence !== renderSequence || store.state.activeProjectId !== pid) return;
+    let savedContent = fileContent;
+    const storageKey = draftKey(pid, selectedFile);
+    const draft = readDraft(localStorage, storageKey);
+    if (draft && draft.content !== savedContent && confirm('Restaurer le brouillon local non sauvegardé ?')) fileContent = draft.content;
     const foundationFiles = files.filter(f => !f.name.startsWith('chapters/'));
     const chapterFiles = files.filter(f => f.name.startsWith('chapters/'));
 
@@ -79,7 +94,7 @@ export async function renderFiles(container) {
 
                 <!-- Quick-create form/button for new chapters -->
                 <form id="new-chapter-form" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
-                    <input type="text" id="new-chapter-name" class="form-control" placeholder="chapter_01.md" style="font-size: 0.85rem;" required>
+                    <input type="text" id="new-chapter-name" class="form-control" placeholder="ch_01.md" style="font-size: 0.85rem;" required>
                     <button type="submit" class="btn btn-sm btn-primary" title="Créer un chapitre">+ Chap</button>
                 </form>
 
@@ -116,8 +131,13 @@ export async function renderFiles(container) {
         </div>
     `;
 
+    const editor = container.querySelector('#file-editor-textarea');
+    const isDirty = () => Boolean(editor && editor.value !== savedContent);
+    setNavigationGuard(() => !isDirty() || confirm('Modifications non sauvegardées. Quitter cet éditeur ? Le brouillon reste disponible sur cet appareil.'), isDirty);
+    editor?.addEventListener('input', () => saveDraft(localStorage, storageKey, editor.value, savedContent));
     container.querySelectorAll('[data-filename]').forEach(btn => {
         btn.addEventListener('click', async (e) => {
+            if (!canLeaveEditor()) return;
             const fname = e.currentTarget.getAttribute('data-filename');
             store.state.selectedProjectFile = fname;
             await renderFiles(container);
@@ -133,7 +153,10 @@ export async function renderFiles(container) {
             saveBtn.disabled = true;
             statusSpan.textContent = 'Enregistrement...';
             try {
-                await api.saveProjectFile(pid, selectedFile, textarea.value);
+                const content = textarea.value;
+                await api.saveProjectFile(pid, selectedFile, content, savedContent);
+                savedContent = content;
+                saveDraft(localStorage, storageKey, textarea.value, savedContent);
                 statusSpan.textContent = '✓ Sauvegardé';
                 setTimeout(() => { statusSpan.textContent = ''; }, 3000);
             } catch (err) {
@@ -158,17 +181,57 @@ export async function renderFiles(container) {
             }
             aiModifyBtn.disabled = true;
             aiPromptInput.disabled = true;
-            aiModifyStatus.textContent = 'IA en cours...';
-            aiModifyStatus.style.color = 'var(--accent)';
+            const inputSnapshot = textarea.value;
+            const originalOnDisk = savedContent;
+            aiModifyStatus.textContent = 'Génération en cours — aucune sauvegarde automatique.';
             try {
-                const res = await api.modifyChapterWithAI(pid, selectedFile, textarea.value, promptText);
-                textarea.value = res.content;
-                aiModifyStatus.textContent = '✓ Chapitre modifié avec succès !';
-                aiModifyStatus.style.color = 'var(--success)';
-                setTimeout(() => { aiModifyStatus.textContent = ''; }, 4000);
+                const result = await api.modifyChapterWithAI(pid, selectedFile, inputSnapshot, promptText,
+                    job => { aiModifyStatus.textContent = `Tâche ${job.id} : ${job.status} — ${job.progress || 'en cours'}`; });
+                if (sequence !== renderSequence || !container.contains(textarea)) return;
+                let proposal = container.querySelector('#ai-proposal');
+                if (proposal) proposal.remove();
+                proposal = document.createElement('section');
+                proposal.id = 'ai-proposal';
+                proposal.className = 'card';
+                const title = document.createElement('h3');
+                title.textContent = 'Proposition IA — non enregistrée';
+                const preview = document.createElement('textarea');
+                preview.className = 'form-control';
+                preview.rows = 16;
+                preview.readOnly = true;
+                preview.value = result.content;
+                const apply = document.createElement('button');
+                apply.className = 'btn btn-primary';
+                apply.textContent = 'Appliquer et enregistrer cette proposition';
+                const discard = document.createElement('button');
+                discard.className = 'btn';
+                discard.textContent = 'Ignorer';
+                discard.addEventListener('click', () => proposal.remove());
+                apply.addEventListener('click', async () => {
+                    if (textarea.value !== inputSnapshot || savedContent !== originalOnDisk) {
+                        aiModifyStatus.textContent = 'Le texte a changé pendant la génération. Proposition conservée pour comparaison ; aucune modification appliquée.';
+                        return;
+                    }
+                    if (!confirm('Remplacer le chapitre par cette proposition et l’enregistrer ?')) return;
+                    apply.disabled = true;
+                    try {
+                        textarea.disabled = true;
+                        saveBtn.disabled = true;
+                        await api.saveProjectFile(pid, selectedFile, result.content, result.original_content ?? originalOnDisk);
+                        savedContent = result.content;
+                        textarea.value = result.content;
+                        saveDraft(localStorage, storageKey, textarea.value, savedContent);
+                        proposal.remove();
+                        aiModifyStatus.textContent = 'Proposition appliquée et enregistrée.';
+                    } catch (error) {
+                        aiModifyStatus.textContent = `Non appliquée : ${error.message}`;
+                    } finally { apply.disabled = false; textarea.disabled = false; saveBtn.disabled = false; }
+                });
+                proposal.append(title, preview, apply, discard);
+                textarea.parentElement.append(proposal);
+                aiModifyStatus.textContent = 'Proposition prête. Relisez-la avant de l’appliquer.';
             } catch (err) {
                 aiModifyStatus.textContent = `Erreur : ${err.message}`;
-                aiModifyStatus.style.color = 'var(--danger)';
             } finally {
                 aiModifyBtn.disabled = false;
                 aiPromptInput.disabled = false;
@@ -180,19 +243,16 @@ export async function renderFiles(container) {
     if (newChapterForm) {
         newChapterForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (!canLeaveEditor()) return;
             const input = document.getElementById('new-chapter-name');
-            let val = input.value.trim();
-            if (val) {
-                if (!val.startsWith('chapters/')) {
-                    val = `chapters/${val}`;
-                }
+            try {
+                const val = `chapters/${canonicalChapterName(input.value)}`;
+                if (files.some(file => file.name === val && file.exists)) throw new Error('Ce chapitre existe déjà.');
+                await api.saveProjectFile(pid, val, `# ${val}\n\nNouveau chapitre.`, '');
                 store.state.selectedProjectFile = val;
-                try {
-                    await api.saveProjectFile(pid, val, `# ${val}\n\nNouveau chapitre.`);
-                    await renderFiles(container);
-                } catch (err) {
-                    alert(`Erreur création chapitre: ${err.message}`);
-                }
+                await renderFiles(container);
+            } catch (err) {
+                alert(`Erreur création chapitre : ${err.message}`);
             }
         });
     }
@@ -201,12 +261,13 @@ export async function renderFiles(container) {
     if (newFileForm) {
         newFileForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (!canLeaveEditor()) return;
             const fnameInput = document.getElementById('new-filename');
             const fname = fnameInput.value.trim();
             if (fname) {
                 store.state.selectedProjectFile = fname;
                 try {
-                    await api.saveProjectFile(pid, fname, `# ${fname}\n\nNouveau fichier.`);
+                    await api.saveProjectFile(pid, fname, `# ${fname}\n\nNouveau fichier.`, '');
                     await renderFiles(container);
                 } catch (err) {
                     alert(`Erreur création fichier: ${err.message}`);

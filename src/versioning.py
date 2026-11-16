@@ -1,87 +1,79 @@
-"""
-src/versioning.py — Narrative branches and revision history management for Autonovel.
-Supports tracking revision history, scores, and narrative branches.
-"""
-
-import os
+"""Narrative Git repositories live inside projects, never in application code."""
 import json
 import subprocess
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
+from src.project_context import project_directory, narrative_git_dir
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-def run_git_cmd(cmd: str) -> str:
-    try:
-        res = subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd=str(BASE_DIR), timeout=15)
-        return res.stdout.strip()
-    except Exception:
-        return ""
+
+def _directory(project_id):
+    return project_directory(project_id, BASE_DIR / "projects")
+
+
+def run_git_cmd(args: list[str], directory: Path) -> str:
+    result = subprocess.run(["git", *args], capture_output=True, text=True,
+                            cwd=str(directory), timeout=15, check=False)
+    if result.returncode:
+        raise ValueError(result.stderr.strip() or "Git operation failed")
+    return result.stdout.strip()
+
+
+def _repository(project_id, initialize=False):
+    directory = _directory(project_id)
+    if initialize and not (directory / ".git").exists():
+        run_git_cmd(["init", "--initial-branch=main"], directory)
+        # Branch creation needs one commit, independent of user Git identity.
+        run_git_cmd(["-c", "user.name=Autonovel", "-c", "user.email=autonovel@localhost",
+                     "commit", "--allow-empty", "-m", "Initialize narrative history"], directory)
+    return narrative_git_dir(directory)
+
+
+def _branch(branch_name):
+    if not branch_name or branch_name.startswith("-"):
+        raise ValueError("Invalid branch name")
+    # check-ref-format is validation, not shell execution.
+    result = subprocess.run(["git", "check-ref-format", "--branch", branch_name],
+                            capture_output=True, text=True, timeout=15)
+    if result.returncode:
+        raise ValueError("Invalid branch name")
+    return branch_name
+
 
 def list_branches(project_id: Optional[str] = None) -> List[str]:
-    # Returns git branches or project-specific branch folders
-    out = run_git_cmd("git branch --list")
-    branches = []
-    for line in out.splitlines():
-        branch = line.replace("*", "").strip()
-        if branch:
-            branches.append(branch)
-    if not branches:
-        branches = ["main"]
-    return branches
+    directory = _directory(project_id)
+    if not (directory / ".git").is_dir():
+        return []
+    return run_git_cmd(["branch", "--format=%(refname:short)"],
+                       narrative_git_dir(directory)).splitlines()
+
 
 def create_branch(branch_name: str, project_id: Optional[str] = None) -> bool:
-    res = run_git_cmd(f"git checkout -b {branch_name}")
-    # Switch back to main or stay? Usually checkout -b switches to it.
+    name = _branch(branch_name)
+    directory = _repository(project_id, initialize=True)
+    run_git_cmd(["switch", "-c", name], directory)
     return True
 
+
 def switch_branch(branch_name: str, project_id: Optional[str] = None) -> bool:
-    res = run_git_cmd(f"git checkout {branch_name}")
-    return res != "" or "Switched" in run_git_cmd("git status")
+    name = _branch(branch_name)
+    run_git_cmd(["switch", name], _repository(project_id))
+    return True
 
-def get_revision_history(chapter_num: Optional[int] = None, project_id: Optional[str] = None) -> List[Dict]:
-    # Parse results.tsv or git log for chapter/revision history
-    results_file = BASE_DIR / "results.tsv"
-    if project_id:
-        p_results = BASE_DIR / "projects" / project_id / "results.tsv"
-        if p_results.exists():
-            results_file = p_results
 
+def get_revision_history(chapter_num: Optional[int] = None,
+                         project_id: Optional[str] = None) -> List[Dict]:
+    directory = _directory(project_id)
+    results_file = directory / "results.tsv"
     history = []
     if results_file.exists():
-        try:
-            lines = results_file.read_text().splitlines()
-            for line in lines[1:]: # skip header
-                parts = line.split("\t")
-                if len(parts) >= 6:
-                    commit, phase, score, word_count, status, description = parts[:6]
-                    if chapter_num is not None:
-                        if f"ch{chapter_num:02d}" not in phase and f"ch{chapter_num}" not in description.lower():
-                            continue
-                    history.append({
-                        "commit": commit,
-                        "phase": phase,
-                        "score": score,
-                        "word_count": word_count,
-                        "status": status,
-                        "description": description
-                    })
-        except Exception:
-            pass
-
-    # Fallback to git log if no results.tsv entries
-    if not history:
-        log_out = run_git_cmd("git log --oneline -n 20")
-        for line in log_out.splitlines():
-            parts = line.split(" ", 1)
-            if len(parts) == 2:
-                history.append({
-                    "commit": parts[0],
-                    "phase": "git",
-                    "score": "?",
-                    "word_count": "0",
-                    "status": "commit",
-                    "description": parts[1]
-                })
-
-    return history
+        lines = results_file.read_text(encoding="utf-8").splitlines()
+        if lines:
+            headers = lines[0].split("\t")
+            for line in lines[1:]:
+                row = dict(zip(headers, line.split("\t")))
+                if chapter_num is not None and f"{chapter_num}" not in row.get("description", ""):
+                    continue
+                history.append(row)
+    return list(reversed(history))

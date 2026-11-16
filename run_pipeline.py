@@ -21,6 +21,9 @@ import os
 import re
 import subprocess
 import sys
+import shlex
+import shutil
+from src.project_context import execute, narrative_git_dir
 from datetime import datetime
 from pathlib import Path
 
@@ -28,7 +31,8 @@ from pathlib import Path
 # Constants
 # ---------------------------------------------------------------------------
 
-BASE_DIR = Path(__file__).parent
+from src.project_context import DATA_DIR, CODE_DIR
+BASE_DIR = DATA_DIR
 STATE_FILE = BASE_DIR / "state.json"
 RESULTS_FILE = BASE_DIR / "results.tsv"
 CHAPTERS_DIR = BASE_DIR / "chapters"
@@ -113,67 +117,42 @@ def step(text: str):
 # Helpers: subprocess execution
 # ---------------------------------------------------------------------------
 
-def run_tool(cmd: str, timeout: int = 600, check: bool = False) -> subprocess.CompletedProcess:
-    """
-    Run a tool as a subprocess, capturing output.
-    Uses shell=True so callers can pass full command strings.
-    Returns CompletedProcess; never raises unless check=True.
-    """
-    step(f"RUN: {cmd}")
-    try:
-        result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True,
-            timeout=timeout, cwd=str(BASE_DIR),
-        )
-        if result.returncode != 0:
-            print(f"    WARN: exit code {result.returncode}")
-            stderr_preview = (result.stderr or "")[:300]
-            if stderr_preview:
-                print(f"    stderr: {stderr_preview}")
-        if check and result.returncode != 0:
-            raise subprocess.CalledProcessError(
-                result.returncode, cmd, result.stdout, result.stderr)
-        return result
-    except subprocess.TimeoutExpired:
-        print(f"    ERROR: timed out after {timeout}s")
-        # Return a fake CompletedProcess for graceful handling
-        fake = subprocess.CompletedProcess(cmd, returncode=-1, stdout="", stderr="TIMEOUT")
-        return fake
+def run_tool(cmd, timeout: int = 600, check: bool = True):
+    """Execute trusted argument vectors, never shell expressions."""
+    args = shlex.split(cmd) if isinstance(cmd, str) else list(cmd)
+    if args[:3] == ["uv", "run", "python"]:
+        args = [sys.executable, str(CODE_DIR / args[3]), *args[4:]]
+    step(f"RUN: {shlex.join(args)}")
+    env = dict(os.environ, AUTONOVEL_PROJECT_DIR=str(BASE_DIR))
+    result = execute(args, cwd=BASE_DIR, timeout=timeout, env=env)
+    if check and result.returncode:
+        raise subprocess.CalledProcessError(result.returncode, args, result.stdout, result.stderr)
+    return result
 
 
-def uv_run(script: str, timeout: int = 600) -> subprocess.CompletedProcess:
-    """Shorthand for 'uv run python <script>' from project root."""
-    return run_tool(f"uv run python {script}", timeout=timeout)
+def uv_run(script: str, timeout: int = 600):
+    args = shlex.split(script)
+    return run_tool([sys.executable, str(CODE_DIR / args[0]), *args[1:]], timeout)
 
-
-# ---------------------------------------------------------------------------
-# Helpers: git operations
-# ---------------------------------------------------------------------------
 
 def git_add_commit(message: str) -> str:
-    """Stage all changes and commit. Returns short hash or empty string."""
-    run_tool("git add -A")
-    result = run_tool(f'git commit -m "{message}" --allow-empty')
-    if result.returncode == 0:
-        hash_result = run_tool("git rev-parse --short HEAD")
-        commit_hash = hash_result.stdout.strip()
-        step(f"GIT COMMIT: {commit_hash} — {message}")
-        return commit_hash
-    else:
-        step("GIT: nothing to commit or commit failed")
-        return ""
+    narrative_git_dir(BASE_DIR)
+    run_tool(["git", "add", "--", "."])
+    run_tool(["git", "-c", "user.name=Autonovel", "-c", "user.email=autonovel@localhost",
+              "commit", "-m", message, "--allow-empty"])
+    return run_tool(["git", "rev-parse", "--short", "HEAD"]).stdout.strip()
 
 
 def git_reset_hard(ref: str = "HEAD~1"):
-    """Hard reset to discard bad changes."""
-    step(f"GIT RESET: {ref}")
-    run_tool(f"git reset --hard {ref}")
+    narrative_git_dir(BASE_DIR)
+    if ref not in ("HEAD", "HEAD~1"):
+        raise ValueError("Unsupported narrative rollback")
+    run_tool(["git", "reset", "--hard", ref])
 
 
 def git_short_hash() -> str:
-    """Get current HEAD short hash."""
-    r = run_tool("git rev-parse --short HEAD")
-    return r.stdout.strip() if r.returncode == 0 else "unknown"
+    narrative_git_dir(BASE_DIR)
+    return run_tool(["git", "rev-parse", "--short", "HEAD"]).stdout.strip()
 
 
 # ---------------------------------------------------------------------------
@@ -185,15 +164,18 @@ def parse_score(stdout: str, key: str = "overall_score") -> float:
     Parse a score from evaluate.py YAML-like stdout output.
     Looks for lines like 'overall_score: 8.0' or 'novel_score: 7.5'.
     """
-    for line in stdout.splitlines():
-        line = line.strip()
-        if line.startswith(f"{key}:"):
-            val = line.split(":", 1)[1].strip()
-            try:
-                return float(val)
-            except ValueError:
-                continue
-    return -1.0
+    decoder = json.JSONDecoder()
+    for index, char in enumerate(stdout):
+        if char != "{":
+            continue
+        try:
+            value, _ = decoder.raw_decode(stdout[index:])
+        except ValueError:
+            continue
+        if isinstance(value, dict) and isinstance(value.get(key), (int, float)):
+            return float(value[key])
+    raise ValueError(f"Missing numeric {key} in evaluation JSON")
+
 
 
 def parse_lore_score(stdout: str) -> float:
@@ -228,7 +210,7 @@ def get_total_chapters(state: dict) -> int:
         matches = re.findall(r'###\s*Ch(?:apter)?\s*(\d+)', text)
         if matches:
             return max(int(m) for m in matches)
-    return 24  # sensible default
+    raise ValueError("Outline must contain numbered chapter headings before drafting")
 
 
 # ---------------------------------------------------------------------------
@@ -265,8 +247,7 @@ def run_foundation(state: dict) -> dict:
         step("Generating canon...")
         uv_run("gen_canon.py", timeout=300)
 
-        step("Running voice fingerprint...")
-        uv_run("voice_fingerprint.py", timeout=300)
+        step("Voice fingerprint is available after drafting; retaining project voice.")
 
         # 2. Evaluate
         step("Evaluating foundation...")
@@ -293,7 +274,7 @@ def run_foundation(state: dict) -> dict:
                        f"Iteration {i}: no improvement ({score} <= {best_score})")
 
         # 4. Check exit condition
-        if best_score >= FOUNDATION_THRESHOLD:
+        if best_score >= FOUNDATION_THRESHOLD and state.get("lore_score", 0) >= 7.0:
             step(f"Foundation score {best_score} >= {FOUNDATION_THRESHOLD} — PASSED")
             break
     else:
@@ -368,7 +349,7 @@ def run_drafting(state: dict) -> dict:
                            "discard", f"Chapter {ch} attempt {attempt}")
                 # Remove the bad chapter file so next attempt starts fresh
                 if ch_file.exists():
-                    run_tool(f"git checkout -- chapters/ch_{ch:02d}.md 2>/dev/null || true")
+                    run_tool(["git", "restore", "--", f"chapters/ch_{ch:02d}.md"], check=False)
 
         if not drafted:
             step(f"WARNING: Chapter {ch} failed all {MAX_CHAPTER_ATTEMPTS} attempts, "
@@ -485,7 +466,7 @@ def run_revision(state: dict, max_cycles: int = MAX_REVISION_CYCLES) -> dict:
         uv_run("adversarial_edit.py all", timeout=900)
 
         # -- Step 2: Apply mechanical cuts (only if apply_cuts.py exists) --
-        apply_cuts = BASE_DIR / "apply_cuts.py"
+        apply_cuts = CODE_DIR / "apply_cuts.py"
         if apply_cuts.exists():
             step("Applying mechanical cuts (OVER-EXPLAIN, REDUNDANT)...")
             run_tool("uv run python apply_cuts.py all "
@@ -521,7 +502,7 @@ def run_revision(state: dict, max_cycles: int = MAX_REVISION_CYCLES) -> dict:
 
             # Generate revision brief
             brief_file = BRIEFS_DIR / f"ch{ch_num:02d}_cycle{cycle}_{question}.md"
-            gen_brief = BASE_DIR / "gen_brief.py"
+            gen_brief = CODE_DIR / "gen_brief.py"
             if gen_brief.exists():
                 step(f"Generating brief for Ch {ch_num}...")
                 run_tool(f"uv run python gen_brief.py --panel {ch_num}", timeout=300)
@@ -608,7 +589,7 @@ def run_revision(state: dict, max_cycles: int = MAX_REVISION_CYCLES) -> dict:
     # =========================================================
     # PHASE 3b: OPUS REVIEW LOOP (deep, prose-level refinement)
     # =========================================================
-    review_py = BASE_DIR / "review.py"
+    review_py = CODE_DIR / "review.py"
     if review_py.exists():
         banner("PHASE 3b: OPUS REVIEW LOOP", "=")
         
@@ -651,7 +632,7 @@ def run_revision(state: dict, max_cycles: int = MAX_REVISION_CYCLES) -> dict:
             
             # Step 4: Generate briefs from review items and fix
             step("Generating revision briefs from review...")
-            gen_brief_py = BASE_DIR / "gen_brief.py"
+            gen_brief_py = CODE_DIR / "gen_brief.py"
             if gen_brief_py.exists():
                 # Auto mode: picks weakest chapter, cross-references all sources
                 run_tool("uv run python gen_brief.py --auto", timeout=300)
@@ -674,7 +655,7 @@ def run_revision(state: dict, max_cycles: int = MAX_REVISION_CYCLES) -> dict:
             # Step 5: Mechanical fixes from review
             # Run slop pass on any mentioned patterns
             step("Running mechanical cleanup pass...")
-            apply_cuts_py = BASE_DIR / "apply_cuts.py"
+            apply_cuts_py = CODE_DIR / "apply_cuts.py"
             if apply_cuts_py.exists():
                 run_tool(
                     "uv run python apply_cuts.py all --types OVER-EXPLAIN REDUNDANT --min-fat 15",
@@ -705,13 +686,13 @@ def run_export(state: dict) -> dict:
     banner("PHASE 4: EXPORT", "=")
 
     # 1. Rebuild outline from chapters
-    build_outline = BASE_DIR / "build_outline.py"
+    build_outline = CODE_DIR / "build_outline.py"
     if build_outline.exists():
         step("Rebuilding outline from chapters...")
         uv_run("build_outline.py", timeout=300)
 
     # 2. Build arc summary
-    build_arc = BASE_DIR / "build_arc_summary.py"
+    build_arc = CODE_DIR / "build_arc_summary.py"
     if build_arc.exists():
         step("Building arc summary...")
         uv_run("build_arc_summary.py", timeout=300)
@@ -732,18 +713,20 @@ def run_export(state: dict) -> dict:
         word_count = sum(len(p.split()) for p in parts)
         step(f"Manuscript: {len(parts)} chapters, {word_count} words")
     else:
-        step("WARNING: no chapter files found for manuscript")
+        raise ValueError("Cannot export a project without chapters")
 
     # 4. Build LaTeX
-    build_tex = BASE_DIR / "typeset" / "build_tex.py"
+    build_tex = CODE_DIR / "typeset" / "build_tex.py"
     if build_tex.exists():
         step("Building LaTeX content...")
         run_tool(f"uv run python typeset/build_tex.py", timeout=120)
 
         # 5. Typeset with tectonic (if available)
         novel_tex = BASE_DIR / "typeset" / "novel.tex"
+        if not novel_tex.exists():
+            state.setdefault("export_warnings", []).append("PDF skipped: project typeset/novel.tex template is missing")
         if novel_tex.exists():
-            tectonic_check = run_tool("which tectonic", timeout=10)
+            tectonic_check = subprocess.CompletedProcess([], 0 if shutil.which("tectonic") else 1)
             if tectonic_check.returncode == 0:
                 step("Typesetting PDF with tectonic...")
                 result = run_tool("tectonic typeset/novel.tex", timeout=300)
@@ -752,6 +735,7 @@ def run_export(state: dict) -> dict:
                 else:
                     step("WARNING: tectonic typesetting failed")
             else:
+                state.setdefault("export_warnings", []).append("PDF skipped: tectonic executable is missing")
                 step("tectonic not found, skipping PDF generation")
     else:
         step("typeset/build_tex.py not found, skipping LaTeX")
@@ -762,6 +746,10 @@ def run_export(state: dict) -> dict:
     log_result(commit_hash, "export", state.get("novel_score", "?"),
                total_words, "export", "Final export")
 
+    state["exports"] = {"manuscript": "manuscript.md",
+        "pdf_available": (BASE_DIR / "typeset" / "novel.pdf").exists(),
+        "epub_available": False, "audiobook_available": False,
+        "notes": "PDF requires project-specific novel.tex and tectonic; ePub and audio require separate steps."}
     state["phase"] = "complete"
     state["current_focus"] = "done"
     save_state(state)
@@ -777,6 +765,18 @@ def run_export(state: dict) -> dict:
 def run_pipeline(args):
     """Run the full pipeline or a specific phase."""
 
+    # Refuse legacy root execution: never stage/reset application source.
+    if BASE_DIR.resolve() == CODE_DIR.resolve():
+        raise ValueError("Set AUTONOVEL_PROJECT_DIR to a dedicated novel directory")
+    BASE_DIR.mkdir(parents=True, exist_ok=True)
+    if not (BASE_DIR / ".git").exists():
+        run_tool(["git", "init", "--initial-branch=main"])
+        git_add_commit("Initialize narrative baseline")
+    narrative_git_dir(BASE_DIR)
+    for name in ("voice.md", "CRAFT.md", "ANTI-SLOP.md", "ANTI-PATTERNS.md", "MYSTERY.md"):
+        target = BASE_DIR / name
+        if not target.exists() and (CODE_DIR / name).is_file():
+            shutil.copyfile(CODE_DIR / name, target)
     # Load or initialize state
     if args.from_scratch:
         banner("STARTING FROM SCRATCH")

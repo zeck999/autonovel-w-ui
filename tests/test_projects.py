@@ -47,7 +47,7 @@ def test_project_files_functions():
     assert "Hero: Alex" in chars_content
 
     # Test chapter files
-    chapter_path = "chapters/chapter_01.md"
+    chapter_path = "chapters/ch_01.md"
     success_ch = save_project_file(pid, chapter_path, "# Chapter 1\n\nIt was a dark and stormy night.")
     assert success_ch is True
 
@@ -59,25 +59,10 @@ def test_project_files_functions():
 
     delete_project(pid)
 
-def test_existing_projects_consistency():
-    projects = list_projects()
-    project_ids = [p["id"] for p in projects]
-    assert "project-nebulae" in project_ids
-    assert "the-clock-work-empire" in project_ids
-    assert "chronicles-of-the-astral-vault" in project_ids
-
-    nebulae = get_project("project-nebulae")
-    assert nebulae is not None
-    assert nebulae["id"] == "project-nebulae"
-    assert nebulae["name"] == "Project Nebulae"
-
-    empire = get_project("the-clock-work-empire")
-    assert empire is not None
-    assert empire["id"] == "the-clock-work-empire"
-    assert empire["name"] == "The Clock Work Empire"
-
-    vault = get_project("chronicles-of-the-astral-vault")
-    assert vault is not None
-    assert vault["id"] == "chronicles-of-the-astral-vault"
-    assert vault["name"] == "Chronicles of the Astral Vault"
-
+def test_empty_and_independent_projects():
+    assert list_projects() == []
+    a = create_project("Project A", "Concept A")
+    b = create_project("Project B", "Concept B")
+    save_project_file(a["id"], "world.md", "Only A")
+    assert get_project_file(b["id"], "world.md") is None
+    assert {p["id"] for p in list_projects()} == {a["id"], b["id"]}

@@ -75,13 +75,11 @@ def test_api_universes_workflow():
     assert response.json()["status"] == "deleted"
 
 def test_api_versioning_and_pipeline():
+    # Narrative operations must never fall back to the application's Git repo.
     response = client.get("/api/versioning/branches")
-    assert response.status_code == 200
-    assert isinstance(response.json(), list)
-    
-    response = client.get("/api/pipeline/status")
-    assert response.status_code == 200
-    assert "phase" in response.json()
+    assert response.status_code == 400
+    assert client.post("/api/pipeline/run", json={"phase": "foundation"}).status_code == 422
+    assert client.post("/api/pipeline/evaluate", json={}).status_code == 422
 
 def test_api_project_files_workflow():
     # Create project
@@ -119,20 +117,20 @@ def test_api_project_files_workflow():
 
     # Save chapter_01.md
     ch_payload = {"content": "# Chapter 1 API\n\nBeginning of the journey."}
-    response = client.put(f"/api/projects/{pid}/files/chapters/chapter_01.md", json=ch_payload)
+    response = client.put(f"/api/projects/{pid}/files/chapters/ch_01.md", json=ch_payload)
     assert response.status_code == 200
     assert response.json()["status"] == "saved"
 
     # Read chapter_01.md
-    response = client.get(f"/api/projects/{pid}/files/chapters/chapter_01.md")
+    response = client.get(f"/api/projects/{pid}/files/chapters/ch_01.md")
     assert response.status_code == 200
     assert "Beginning of the journey" in response.json()["content"]
 
-    # List files includes chapters/chapter_01.md
+    # List files includes chapters/ch_01.md
     response = client.get(f"/api/projects/{pid}/files")
     assert response.status_code == 200
     files = response.json()
-    assert any(f["name"] == "chapters/chapter_01.md" for f in files)
+    assert any(f["name"] == "chapters/ch_01.md" for f in files)
 
     # Cleanup: Delete project
     client.delete(f"/api/projects/{pid}")

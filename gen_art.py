@@ -32,8 +32,9 @@ import subprocess
 from pathlib import Path
 from dotenv import load_dotenv
 
-BASE_DIR = Path(__file__).parent
-load_dotenv(BASE_DIR / ".env", override=True)
+from src.project_context import DATA_DIR, CODE_DIR
+BASE_DIR = DATA_DIR
+load_dotenv(CODE_DIR / ".env", override=True)
 
 FAL_KEY = os.environ.get("FAL_KEY", "")
 FAL_URL = "https://fal.run/fal-ai/nano-banana-2"

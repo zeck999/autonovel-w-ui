@@ -16,17 +16,19 @@ from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 
 from src.api import app
+from tests_helpers import wait_job
 
 client = TestClient(app)
 
-@patch("src.pipeline_adapter.subprocess.run")
-def test_full_user_journey_pipeline(mock_subprocess_run):
+@patch("src.api.evaluate_project", return_value={"returncode": 0, "score": 8.5})
+@patch("src.api.run_pipeline_phase")
+def test_full_user_journey_pipeline(mock_subprocess_run, mock_evaluate):
     # Mock successful subprocess execution for pipeline phases and evaluations
     mock_res = MagicMock()
     mock_res.returncode = 0
     mock_res.stdout = "Phase executed successfully.\noverall_score: 8.5\n"
     mock_res.stderr = ""
-    mock_subprocess_run.return_value = mock_res
+    mock_subprocess_run.return_value = {"returncode": 0, "last_run_output": "Simulated", "phase": "foundation"}
 
     # --- Étape 1 : Création d'un projet de test et sélection active ---
     print("\n[Étape 1] Création d'un projet de test et sélection active...")
@@ -80,32 +82,32 @@ def test_full_user_journey_pipeline(mock_subprocess_run):
     # --- Étape 3 : Exécution de la phase Foundation (/api/pipeline/run) ---
     print("\n[Étape 3] Exécution de la phase Foundation...")
     response = client.post("/api/pipeline/run", json={"phase": "foundation", "project_id": pid})
-    assert response.status_code == 200
-    foundation_res = response.json()
+    assert response.status_code == 202
+    foundation_res = wait_job(client, response.json()["id"])["result"]
     assert foundation_res.get("returncode") == 0
     print("  -> Phase Foundation exécutée avec succès.")
 
     # --- Étape 4 : Exécution de la phase Outline ---
     print("\n[Étape 4] Exécution de la phase Outline...")
     response = client.post("/api/pipeline/run", json={"phase": "outline", "project_id": pid})
-    assert response.status_code == 200
-    outline_res = response.json()
+    assert response.status_code == 202
+    outline_res = wait_job(client, response.json()["id"])["result"]
     assert outline_res.get("returncode") == 0
     print("  -> Phase Outline exécutée avec succès.")
 
     # --- Étape 5 : Exécution de la phase Draft ---
     print("\n[Étape 5] Exécution de la phase Draft...")
     response = client.post("/api/pipeline/run", json={"phase": "draft", "project_id": pid})
-    assert response.status_code == 200
-    draft_res = response.json()
+    assert response.status_code == 202
+    draft_res = wait_job(client, response.json()["id"])["result"]
     assert draft_res.get("returncode") == 0
     print("  -> Phase Draft exécutée avec succès.")
 
     # --- Étape 6 : Évaluation du projet (/api/pipeline/evaluate) ---
     print("\n[Étape 6] Évaluation du projet...")
     response = client.post("/api/pipeline/evaluate", json={"project_id": pid})
-    assert response.status_code == 200
-    eval_res = response.json()
+    assert response.status_code == 202
+    eval_res = wait_job(client, response.json()["id"])["result"]
     assert eval_res.get("returncode") == 0
     assert eval_res.get("score") == 8.5
     print(f"  -> Évaluation réussie (Score global : {eval_res.get('score')})")

@@ -23,17 +23,35 @@ cp .env.example .env    # Add your API keys
 # Install dependencies
 uv sync
 
-# Generate a seed concept (or write your own in seed.txt)
-uv run python seed.py
+# Start the Web UI locally (one worker; API keys stay in .env)
+uv run uvicorn src.api:app --host 127.0.0.1 --port 8000
 
-# Run the full pipeline
-uv run python run_pipeline.py --from-scratch
-
-# Or start the Web UI / FastAPI backend server
-uv run uvicorn src.api:app --reload --port 8000
+# Create a project in the UI before running generation.
+# CLI equivalent: use an existing project directory, never the code root.
+AUTONOVEL_PROJECT_DIR="$PWD/projects/my-novel" uv run python run_pipeline.py --phase foundation
+# Generation uses paid provider APIs; choose it explicitly.
 ```
 
 ---
+
+## Safe operation and current limits
+
+- Run **one server process / one worker**. Jobs and locks are in memory; multiple workers are not supported. After restart, job identifiers are lost: inspect the project before retrying. Idempotency keys prevent duplicate accepted operations only while their job remains in the bounded in-memory history (200 jobs).
+- To expose the application on a LAN, set `AUTONOVEL_ACCESS_TOKEN` to a strong random secret in the server environment, then bind to `0.0.0.0`. The browser asks for that token after a 401 and retains it in session storage. Use HTTPS through a trusted reverse proxy; a Bearer token over plain HTTP is not encrypted. Do not expose the application directly to the public Internet. Without a token, only loopback access is accepted. Do not enable trusted proxy headers unless you control the proxy.
+- `POST /api/pipeline/run`, `/api/pipeline/evaluate`, and `/api/projects/{id}/chapters/modify` return **202** with a job ID. Poll `GET /api/jobs/{id}` until `succeeded` or `failed`. The client sends `Idempotency-Key` for retry safety. There is no durable queue or user-triggered cancellation yet; progress currently reports queued/running/completed, not per-token output.
+- AI chapter changes produce a **proposal**, not an automatic save. Apply through the editor after review. File PUT accepts `expected_content` and returns 409 if the saved content changed. Unsaved drafts are stored locally in the browser; avoid shared browser profiles for private manuscripts.
+- Editable files are limited to narrative Markdown/text documents and `chapters/ch_NN.md`. Runtime state and secrets cannot be edited through file endpoints. Narrative branches require `project_id` and use a dedicated Git repository within that project; they never checkout or reset the application's code branch.
+- PDF export requires a project-specific `typeset/novel.tex` and `tectonic`. The general export phase does not produce a final ePub or audiobook; historical cover tools retain demo-specific graphic settings. No paid generation or complete export was used to validate these changes.
+- API-key verification currently checks **format only**, not provider authentication. Provider/model selection is unchanged.
+
+### Tests (no paid generation)
+
+```bash
+uv run pytest -q
+node --test ui/tests/*.test.mjs
+```
+
+Tests use temporary projects and mocked providers; no existing manuscript or `.env` is used. Browser tests cover client/state logic, not a complete rendered browser journey.
 
 ## The Pipeline
 

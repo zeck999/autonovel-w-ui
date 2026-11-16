@@ -11,13 +11,15 @@ from src.api import app
 client = TestClient(app)
 
 def test_reviews_latest_empty():
-    response = client.get("/api/reviews/latest")
+    pid = client.post("/api/projects", json={"name": "Review", "concept": "fixture"}).json()["id"]
+    response = client.get(f"/api/reviews/latest?project_id={pid}")
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, dict)
 
 def test_reviews_latest_with_mock_data():
-    edit_logs = Path("edit_logs")
+    pid = client.post("/api/projects", json={"name": "Review", "concept": "fixture"}).json()["id"]
+    edit_logs = Path("projects") / pid / "edit_logs"
     edit_logs.mkdir(exist_ok=True)
     mock_file = edit_logs / "20261006_120000_review.json"
     mock_data = {
@@ -42,7 +44,7 @@ def test_reviews_latest_with_mock_data():
     }
     mock_file.write_text(json.dumps(mock_data))
     try:
-        response = client.get("/api/reviews/latest")
+        response = client.get(f"/api/reviews/latest?project_id={pid}")
         assert response.status_code == 200
         data = response.json()
         assert data.get("title") == "Test Novel"

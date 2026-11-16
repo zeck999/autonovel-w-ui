@@ -11,7 +11,8 @@ import statistics
 from pathlib import Path
 from collections import Counter
 
-BASE_DIR = Path(__file__).parent
+from src.project_context import DATA_DIR, CODE_DIR
+BASE_DIR = DATA_DIR
 CHAPTERS_DIR = BASE_DIR / "chapters"
 
 # The three vocabulary wells from voice.md
@@ -142,11 +143,15 @@ def analyze_chapter(path):
 
 def main():
     results = {}
-    for ch in range(1, 25):
-        path = CHAPTERS_DIR / f"ch_{ch:02d}.md"
+    for path in sorted(CHAPTERS_DIR.glob("ch_*.md")):
+        ch = int(path.stem.split("_")[1])
         if path.exists():
             results[f"ch_{ch:02d}"] = analyze_chapter(path)
     
+    if not results:
+        print("No chapters available for voice fingerprint.")
+        return
+
     # Compute novel-wide averages
     all_vals = list(results.values())
     avg = {}
@@ -177,9 +182,10 @@ def main():
     print("VOICE FINGERPRINT")
     print("=" * 70)
     print(f"{'Ch':<8} {'Words':<7} {'AvgSnt':<7} {'CV':<6} {'Frag%':<7} {'Long%':<7} {'Dial%':<7} {'Mus%':<6} {'Trd%':<6} {'Bod%':<6} {'AbsPK':<6} {'HeStrt':<7}")
-    for ch in range(1, 25):
-        key = f"ch_{ch:02d}"
-        r = results[key]
+    for key, r in results.items():
+        if key == "novel_average":
+            continue
+        ch = int(key.split("_")[1])
         print(f"  {ch:<6} {r['word_count']:<7} {r['avg_sentence_length']:<7} {r['sentence_length_cv']:<6} {r['fragments_pct']:<7} {r['long_sentences_pct']:<7} {r['dialogue_ratio']:<7} {r['well_musical_pct']:<6} {r['well_trade_pct']:<6} {r['well_body_pct']:<6} {r['abstract_per_1k']:<6} {r['he_start_pct']:<7}")
     
     r = results["novel_average"]

@@ -1,73 +1,39 @@
-"""
-Unit tests for chapter modification with AI endpoint (/api/projects/{id}/chapters/modify)
-"""
-
-import pytest
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from src.api import app
-from unittest.mock import patch, MagicMock
+from tests_helpers import wait_job
 
 client = TestClient(app)
 
+
+def chapter():
+    pid = client.post('/api/projects', json={'name': 'AI test', 'concept': 'fixture'}).json()['id']
+    client.put(f'/api/projects/{pid}/files/chapters/ch_01.md', json={'content': 'Original'})
+    return pid
+
+
 def test_chapter_modify_missing_key():
-    # Create a project first
-    res = client.post("/api/projects", json={"name": "AI Test Novel", "concept": "Concept for AI test"})
-    assert res.status_code == 200
-    pid = res.json()["id"]
+    pid = chapter()
+    response = client.post(f'/api/projects/{pid}/chapters/modify', json={'file_path': 'chapters/ch_01.md', 'content': 'Original', 'prompt': 'revise'})
+    assert response.status_code == 202
+    job = wait_job(client, response.json()['id'])
+    assert job['status'] == 'failed'
+    assert 'ERR_AI_MOD_KEY_MISSING' in job['error']
 
-    # Ensure ANTHROPIC_API_KEY is not set or placeholder
-    with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "your-key-here"}):
-        response = client.post(
-            f"/api/projects/{pid}/chapters/modify",
-            json={
-                "file_path": "chapters/chapter_01.md",
-                "content": "# Chapter 1\n\nOriginal text.",
-                "prompt": "Make it more suspenseful."
-            }
-        )
-        assert response.status_code == 400
-        data = response.json()
-        assert "ERR_AI_MOD_KEY_MISSING" in data["detail"]
-
-    # Cleanup
-    client.delete(f"/api/projects/{pid}")
 
 def test_chapter_modify_project_not_found():
-    response = client.post(
-        "/api/projects/non-existent-proj/chapters/modify",
-        json={
-            "file_path": "chapters/chapter_01.md",
-            "content": "Test",
-            "prompt": "Test prompt"
-        }
-    )
+    response = client.post('/api/projects/not-found/chapters/modify', json={'file_path': 'chapters/ch_01.md', 'content': 'Original', 'prompt': 'revise'})
     assert response.status_code == 404
 
-def test_chapter_modify_success_mock():
-    res = client.post("/api/projects", json={"name": "AI Success Novel", "concept": "Concept for AI success"})
-    assert res.status_code == 200
-    pid = res.json()["id"]
 
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {
-        "content": [{"text": "# Chapter 1\n\nAI Modified text with suspense."}]
-    }
-
-    with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "sk-ant-testkey12345"}):
-        with patch("httpx.post", return_value=mock_response):
-            response = client.post(
-                f"/api/projects/{pid}/chapters/modify",
-                json={
-                    "file_path": "chapters/chapter_01.md",
-                    "content": "# Chapter 1\n\nOriginal text.",
-                    "prompt": "Make it more suspenseful."
-                }
-            )
-            assert response.status_code == 200
-            data = response.json()
-            assert data["status"] == "success"
-            assert "AI Modified text" in data["content"]
-
-    # Cleanup
-    client.delete(f"/api/projects/{pid}")
+def test_chapter_modify_success_mock(monkeypatch):
+    import httpx
+    pid = chapter()
+    monkeypatch.setenv('ANTHROPIC_API_KEY', 'fixture-key')
+    with patch('httpx.post', return_value=httpx.Response(200, json={'content': [{'text': 'Proposal'}]})):
+        response = client.post(f'/api/projects/{pid}/chapters/modify', json={'file_path': 'chapters/ch_01.md', 'content': 'Original', 'prompt': 'revise'})
+        assert response.status_code == 202
+        job = wait_job(client, response.json()['id'])
+        assert job['result']['status'] == 'proposal'
+        assert job['result']['content'] == 'Proposal'
+    assert client.get(f'/api/projects/{pid}/files/chapters/ch_01.md').json()['content'] == 'Original'

@@ -84,10 +84,10 @@
     import { initReviews } from './js/reviews.js';
 
     window.addEventListener('DOMContentLoaded', async () => {
+        await store.init();
         initRouter();
         initInspector();
         initReviews();
-        await store.init();
 
         // Update connection status badge
         store.subscribe(state => {

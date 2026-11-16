@@ -15,7 +15,8 @@ import re
 import sys
 from pathlib import Path
 
-BASE_DIR = Path(__file__).parent
+from src.project_context import DATA_DIR, CODE_DIR
+BASE_DIR = DATA_DIR
 CHAPTERS_DIR = BASE_DIR / "chapters"
 EDIT_LOGS_DIR = BASE_DIR / "edit_logs"
 EVAL_LOGS_DIR = BASE_DIR / "eval_logs"

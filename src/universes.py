@@ -9,6 +9,7 @@ import shutil
 from pathlib import Path
 from typing import List, Dict, Optional
 from pydantic import BaseModel
+from src.security import safe_child, validate_id
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 UNIVERSES_DIR = BASE_DIR / "universes"
@@ -108,7 +109,7 @@ def create_universe(name: str, description: str = "") -> Dict:
     return {**state, "projects_count": 0}
 
 def get_universe(universe_id: str) -> Optional[Dict]:
-    u_path = UNIVERSES_DIR / universe_id
+    u_path = safe_child(UNIVERSES_DIR, validate_id(universe_id))
     if not u_path.exists() or not u_path.is_dir():
         return None
     state_file = u_path / "state.json"
@@ -127,7 +128,7 @@ def get_universe(universe_id: str) -> Optional[Dict]:
     return state
 
 def delete_universe(universe_id: str) -> bool:
-    u_path = UNIVERSES_DIR / universe_id
+    u_path = safe_child(UNIVERSES_DIR, validate_id(universe_id))
     if u_path.exists() and u_path.is_dir():
         shutil.rmtree(u_path)
         return True

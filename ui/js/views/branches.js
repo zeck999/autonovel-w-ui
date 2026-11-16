@@ -9,6 +9,11 @@ export function renderBranches(container) {
     const state = store.state;
     const pid = state.activeProjectId;
 
+    if (!pid) {
+        container.innerHTML = '<div class="card"><h3>Aucun projet actif</h3><p>Sélectionnez un projet pour gérer ses versions narratives.</p><a href="#/projects">Choisir un projet</a></div>';
+        return;
+    }
+
     container.innerHTML = `
         <div class="grid-2">
             <div class="card">

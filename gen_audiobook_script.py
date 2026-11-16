@@ -19,8 +19,9 @@ import re
 from pathlib import Path
 from dotenv import load_dotenv
 
-BASE_DIR = Path(__file__).parent
-load_dotenv(BASE_DIR / ".env", override=True)
+from src.project_context import DATA_DIR, CODE_DIR
+BASE_DIR = DATA_DIR
+load_dotenv(CODE_DIR / ".env", override=True)
 
 WRITER_MODEL = os.environ.get("AUTONOVEL_WRITER_MODEL", "claude-sonnet-4-6")
 API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -30,21 +31,11 @@ CHAPTERS_DIR = BASE_DIR / "chapters"
 AUDIO_DIR = BASE_DIR / "audiobook"
 SCRIPTS_DIR = AUDIO_DIR / "scripts"
 
-# Characters from the novel
+# Cast descriptions must come from this project, never a sample novel.
+characters_path = BASE_DIR / "characters.md"
 CHARACTERS = {
-    "NARRATOR": "The narrative voice — warm, measured, precise. Reads prose with the rhythm of the novel's world.",
-    "CASS": "14-year-old boy. Dry, sharp, sometimes frustrated. His voice tightens when he lies or holds back.",
-    "EDDAN": "52, Cass's father. Deep, rough, terse. Sentences often trail off or restart. Workshop voice is steadier than kitchen voice.",
-    "PERIN": "26, Cass's brother. Dry, precise, carries something heavy. Letters-voice is more controlled than in-person voice.",
-    "LENNE": "14, female. Quick, confident, intellectually sharp. Composes while she talks — fingers moving, voice certain.",
-    "TORVALD": "63, retired dye merchant. Gravelly, warm, rambling. Outer-district speech — longer sentences, less careful, trade metaphors.",
-    "MARET": "60, female. Controlled, precise, still. No wasted words. When she finally shows emotion it's devastating.",
-    "DAV_SORN": "34, Court Singer. Formal, clipped, self-correcting. Starts sentences and abandons them. Qualifying everything.",
-    "PROCTOR_FEN": "Male, middle-aged, Academy teacher. Dry, archly amused, pedagogical.",
-    "FERREN": "40, acoustician. Clinical, measured, professional.",
-    "MIRA_FEN": "60s, female, Academy scholar. Quiet, precise, carrying thirty years of regret.",
-    "VELLA": "Lenne's mother, Court Singer. Measured, formal, the weight of knowing she's about to risk everything.",
-    "OSSIAN": "14, male student. Nervous, eager, tends to overstate.",
+    "NARRATOR": "Narration matching the project's voice and tone.",
+    "CAST_GUIDANCE": characters_path.read_text(encoding="utf-8") if characters_path.exists() else "Infer speakers consistently from the chapter.",
 }
 
 AUDIO_TAG_GUIDE = """
@@ -115,7 +106,7 @@ RULES:
 6. Scene breaks (---) become {{"speaker": "NARRATOR", "text": "[pause]"}}
 7. Chapter titles become the first segment: {{"speaker": "NARRATOR", "text": "[slowly] Chapter One: The Morning Pitch"}}
 8. Add audio tags based on emotional context. Be subtle — most lines need no tag.
-9. Internal thoughts in *italics* should be read by the CHARACTER (Cass usually), tagged [softly] or [whisper].
+9. Internal thoughts in *italics* should be read by the CHARACTER (use the speaker established by the text), tagged [softly] or [whisper].
 
 OUTPUT FORMAT: A JSON array of objects, each with:
   "speaker": character name (from the list above)

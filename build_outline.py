@@ -11,8 +11,9 @@ import re
 from pathlib import Path
 from dotenv import load_dotenv
 
-BASE_DIR = Path(__file__).parent
-load_dotenv(BASE_DIR / ".env")
+from src.project_context import DATA_DIR, CODE_DIR
+BASE_DIR = DATA_DIR
+load_dotenv(CODE_DIR / ".env")
 
 JUDGE_MODEL = os.environ.get("AUTONOVEL_JUDGE_MODEL", "claude-sonnet-4-6")
 API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -53,8 +54,8 @@ def main():
     
     entries = []
     
-    for ch in range(1, 20):
-        path = CHAPTERS_DIR / f"ch_{ch:02d}.md"
+    for path in sorted(CHAPTERS_DIR.glob("ch_*.md")):
+        ch = int(path.stem.split("_")[1])
         text = path.read_text()
         wc = len(text.split())
         

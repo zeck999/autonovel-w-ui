@@ -53,6 +53,8 @@ def get_api_keys_status() -> Dict[str, Dict]:
     return result
 
 def update_api_keys(updates: Dict[str, str]) -> bool:
+    if any(k not in SUPPORTED_KEYS or any(c in v for c in "\r\n\x00") for k, v in updates.items()):
+        raise ValueError("Invalid API key value")
     ensure_env_file()
     try:
         lines = ENV_FILE.read_text().splitlines()
@@ -74,7 +76,14 @@ def update_api_keys(updates: Dict[str, str]) -> bool:
             if k not in found_keys:
                 new_lines.append(f"{k}={v}")
 
-        ENV_FILE.write_text("\n".join(new_lines) + "\n")
+        import tempfile
+        fd, temporary = tempfile.mkstemp(dir=ENV_FILE.parent, prefix=".settings-")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as output:
+                output.write("\n".join(new_lines) + "\n")
+            os.replace(temporary, ENV_FILE)
+        finally:
+            Path(temporary).unlink(missing_ok=True)
         
         for k, v in updates.items():
             os.environ[k] = v
@@ -118,19 +127,19 @@ def verify_api_key(provider: str, api_key: Optional[str] = None) -> Dict:
         if prov == "anthropic":
             if api_key.startswith("sk-ant-") or len(api_key) > 15:
                 latency = int((time.time() - start_time) * 1000) + 40
-                return {"success": True, "message": "Anthropic API key authenticated successfully.", "latency_ms": latency}
+                return {"success": True, "message": "Anthropic key format accepted (not authenticated with provider).", "latency_ms": latency}
             else:
                 return {"success": False, "message": "Invalid Anthropic API key format.", "latency_ms": int((time.time() - start_time) * 1000)}
         elif prov == "elevenlabs":
             if len(api_key) >= 15:
                 latency = int((time.time() - start_time) * 1000) + 50
-                return {"success": True, "message": "ElevenLabs API key authenticated successfully.", "latency_ms": latency}
+                return {"success": True, "message": "ElevenLabs key format accepted (not authenticated with provider).", "latency_ms": latency}
             else:
                 return {"success": False, "message": "Invalid ElevenLabs API key.", "latency_ms": int((time.time() - start_time) * 1000)}
         elif prov == "fal":
             if len(api_key) >= 15:
                 latency = int((time.time() - start_time) * 1000) + 45
-                return {"success": True, "message": "Fal.ai API key authenticated successfully.", "latency_ms": latency}
+                return {"success": True, "message": "Fal.ai key format accepted (not authenticated with provider).", "latency_ms": latency}
             else:
                 return {"success": False, "message": "Invalid Fal.ai API key.", "latency_ms": int((time.time() - start_time) * 1000)}
         else:

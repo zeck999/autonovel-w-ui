@@ -4,7 +4,16 @@ Covers multi-project management, shared universes, narrative versioning, and pip
 plus serving the Autonovel Web UI (HTML/CSS/JS).
 """
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
+from typing import Literal
+import os
+import secrets
+import ipaddress
+from urllib.parse import urlsplit
+from src.security import safe_child, validate_id
+from src.jobs import submit_job, get_job, ProjectBusyError, project_guard
+from src.projects import FileConflictError
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pathlib import Path
@@ -25,6 +34,55 @@ app = FastAPI(
 )
 
 STATIC_UI = Path(__file__).resolve().parent.parent / "ui"
+
+@app.middleware("http")
+async def protect_access(request: Request, call_next):
+    token = os.environ.get("AUTONOVEL_ACCESS_TOKEN", "")
+    host = request.client.host if request.client else ""
+    try:
+        local = ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        local = host == "testclient"
+    # Reject cross-origin browser requests, including localhost DNS rebinding.
+    origin = request.headers.get("origin")
+    hostname = request.url.hostname or ""
+    if not token and hostname not in {"localhost", "127.0.0.1", "::1", "testserver"}:
+        return JSONResponse({"detail": "Configure AUTONOVEL_ACCESS_TOKEN for network access"}, status_code=403)
+    if origin and urlsplit(origin).netloc != request.url.netloc:
+        return JSONResponse({"detail": "Cross-origin requests are not allowed"}, status_code=403)
+    if request.url.path.startswith("/api") or request.url.path in {"/docs", "/redoc", "/openapi.json"}:
+        authorized = token and secrets.compare_digest(request.headers.get("authorization", ""), "Bearer " + token)
+        if (token and not authorized) or (not token and not local):
+            return JSONResponse({"detail": "Authentication required"}, status_code=401,
+                                headers={"WWW-Authenticate": "Bearer"})
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "same-origin"
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.exception_handler(ValueError)
+async def invalid_input(request, exc):
+    status = 409 if isinstance(exc, (FileConflictError, ProjectBusyError)) else 400
+    return JSONResponse({"detail": str(exc)}, status_code=status)
+
+
+def require_project(project_id):
+    if not project_id:
+        raise HTTPException(status_code=422, detail="project_id is required")
+    validate_id(project_id)
+    if not get_project(project_id):
+        raise HTTPException(status_code=404, detail="Project not found")
+
+
+@app.get("/api/jobs/{job_id}")
+def api_get_job(job_id: str):
+    job = get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Task not found (tasks are lost after server restart)")
+    return job
+
 
 @app.get("/")
 def ui_root():
@@ -85,13 +143,14 @@ def api_get_project_file(project_id: str, filename: str):
 
 class FileSavePayload(BaseModel):
     content: str
+    expected_content: Optional[str] = None
 
 @app.put("/api/projects/{project_id}/files/{filename:path}", response_model=Dict)
 def api_save_project_file(project_id: str, filename: str, payload: FileSavePayload):
     proj = get_project(project_id)
     if not proj:
         raise HTTPException(status_code=404, detail="Project not found")
-    success = save_project_file(project_id, filename, payload.content)
+    success = save_project_file(project_id, filename, payload.content, payload.expected_content)
     if not success:
         raise HTTPException(status_code=400, detail="Failed to save file")
     return {"status": "saved", "filename": filename}
@@ -130,7 +189,9 @@ class BranchCreate(BaseModel):
 
 @app.post("/api/versioning/branches")
 def api_create_branch(payload: BranchCreate):
-    success = create_branch(payload.branch_name, payload.project_id)
+    require_project(payload.project_id)
+    with project_guard(payload.project_id):
+        success = create_branch(payload.branch_name, payload.project_id)
     return {"status": "created" if success else "failed", "branch": payload.branch_name}
 
 class BranchSwitch(BaseModel):
@@ -139,7 +200,9 @@ class BranchSwitch(BaseModel):
 
 @app.post("/api/versioning/switch")
 def api_switch_branch(payload: BranchSwitch):
-    success = switch_branch(payload.branch_name, payload.project_id)
+    require_project(payload.project_id)
+    with project_guard(payload.project_id):
+        success = switch_branch(payload.branch_name, payload.project_id)
     if not success:
         raise HTTPException(status_code=400, detail="Failed to switch branch")
     return {"status": "switched", "branch": payload.branch_name}
@@ -154,27 +217,30 @@ def api_pipeline_status(project_id: Optional[str] = None):
     return get_pipeline_status(project_id)
 
 class PipelineRun(BaseModel):
-    phase: str
+    phase: Literal["foundation", "outline", "draft", "drafting", "review", "revise", "revision", "typeset", "export", "audiobook"]
     project_id: Optional[str] = None
     max_cycles: Optional[int] = None
 
-@app.post("/api/pipeline/run", response_model=Dict)
-def api_pipeline_run(payload: PipelineRun):
-    res = run_pipeline_phase(payload.phase, payload.project_id, payload.max_cycles)
-    if res.get("returncode", 0) != 0 or res.get("error"):
-        raise HTTPException(status_code=400, detail=res.get("error", "Pipeline execution failed"))
-    return res
+@app.post("/api/pipeline/run", response_model=Dict, status_code=202)
+def api_pipeline_run(payload: PipelineRun, request: Request):
+    require_project(payload.project_id)
+    if payload.max_cycles is not None and not 1 <= payload.max_cycles <= 6:
+        raise HTTPException(status_code=422, detail="max_cycles must be between 1 and 6")
+    return submit_job(payload.project_id, f"pipeline:{payload.phase}:{payload.max_cycles}",
+                      lambda: run_pipeline_phase(payload.phase, payload.project_id, payload.max_cycles), request.headers.get("Idempotency-Key"))
+
 
 class PipelineEvaluate(BaseModel):
     project_id: Optional[str] = None
     chapter_num: Optional[int] = None
 
-@app.post("/api/pipeline/evaluate", response_model=Dict)
-def api_pipeline_evaluate(payload: PipelineEvaluate):
-    res = evaluate_project(payload.project_id, payload.chapter_num)
-    if res.get("returncode", 0) != 0 or res.get("error"):
-        raise HTTPException(status_code=400, detail=res.get("error", "Evaluation failed"))
-    return res
+@app.post("/api/pipeline/evaluate", response_model=Dict, status_code=202)
+def api_pipeline_evaluate(payload: PipelineEvaluate, request: Request):
+    require_project(payload.project_id)
+    if payload.chapter_num is not None and payload.chapter_num < 1:
+        raise HTTPException(status_code=422, detail="Invalid chapter number")
+    return submit_job(payload.project_id, f"evaluate:{payload.chapter_num}",
+                      lambda: evaluate_project(payload.project_id, payload.chapter_num), request.headers.get("Idempotency-Key"))
 
 
 # --- Settings Endpoints ---
@@ -217,8 +283,22 @@ class ChapterModifyPayload(BaseModel):
     content: str
     prompt: str
 
-@app.post("/api/projects/{project_id}/chapters/modify", response_model=Dict)
-def api_modify_chapter_ai(project_id: str, payload: ChapterModifyPayload):
+@app.post("/api/projects/{project_id}/chapters/modify", response_model=Dict, status_code=202)
+def api_modify_chapter_ai(project_id: str, payload: ChapterModifyPayload, request: Request):
+    require_project(project_id)
+    # Validate the file boundary and type before spending provider credits.
+    from src.projects import PROJECTS_DIR
+    from src.security import project_file
+    project_file(safe_child(PROJECTS_DIR, project_id), payload.file_path)
+    original = get_project_file(project_id, payload.file_path)
+    if original is None:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+    import hashlib
+    operation = "modify:" + hashlib.sha256(payload.model_dump_json().encode()).hexdigest()
+    return submit_job(project_id, operation, lambda: _modify_chapter_proposal(project_id, payload, original), request.headers.get("Idempotency-Key"))
+
+
+def _modify_chapter_proposal(project_id: str, payload: ChapterModifyPayload, original_content: str):
     proj = get_project(project_id)
     if not proj:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -239,7 +319,8 @@ def api_modify_chapter_ai(project_id: str, payload: ChapterModifyPayload):
     writer_model = os.environ.get("AUTONOVEL_WRITER_MODEL", "claude-sonnet-4-6")
     api_base = os.environ.get("AUTONOVEL_API_BASE_URL", "https://api.anthropic.com")
 
-    project_dir = Path(__file__).resolve().parent.parent / "projects" / project_id
+    from src.projects import PROJECTS_DIR
+    project_dir = safe_child(PROJECTS_DIR, validate_id(project_id))
     voice = (project_dir / "voice.md").read_text() if (project_dir / "voice.md").exists() else ""
     characters = (project_dir / "characters.md").read_text() if (project_dir / "characters.md").exists() else ""
     world = (project_dir / "world.md").read_text() if (project_dir / "world.md").exists() else ""
@@ -291,49 +372,48 @@ Return the complete modified chapter text now."""
             logger.error("ERR_AI_MOD_RATE_LIMIT_429: Rate limit exceeded.")
             raise HTTPException(status_code=429, detail="ERR_AI_MOD_RATE_LIMIT_429: Trop de requêtes (rate limit).")
         elif resp.status_code >= 400:
-            logger.error(f"ERR_AI_MOD_ERROR: API error {resp.status_code}: {resp.text}")
+            logger.error("ERR_AI_MOD_ERROR: API status %s", resp.status_code)
             raise HTTPException(status_code=500, detail=f"ERR_AI_MOD_ERROR: Erreur API externe ({resp.status_code}).")
 
         data = resp.json()
         modified_content = data["content"][0]["text"]
 
-        success = save_project_file(project_id, payload.file_path, modified_content)
-        if not success:
-            logger.error(f"ERR_AI_MOD_SAVE_FAILED: Failed to save modified chapter to {payload.file_path}")
-            raise HTTPException(status_code=500, detail="ERR_AI_MOD_SAVE_FAILED: Impossible d'enregistrer le chapitre modifié.")
-
+        if data.get("stop_reason") == "max_tokens":
+            raise HTTPException(status_code=502, detail="AI response truncated; no file was changed")
         return {
-            "file_path": payload.file_path,
-            "content": modified_content,
-            "status": "success",
-            "message": "Chapter modified successfully with AI"
+            "file_path": payload.file_path, "filename": payload.file_path,
+            "content": modified_content, "original_content": original_content,
+            "status": "proposal", "message": "Review the proposal before applying it"
         }
     except httpx.TimeoutException:
         logger.error("ERR_AI_MOD_TIMEOUT: AI request timed out.")
         raise HTTPException(status_code=504, detail="ERR_AI_MOD_TIMEOUT: La requête IA a expiré (timeout).")
     except httpx.RequestError as e:
         logger.error(f"ERR_AI_MOD_NETWORK_ERROR: Network error: {e}")
-        raise HTTPException(status_code=502, detail=f"ERR_AI_MOD_NETWORK_ERROR: Erreur réseau: {str(e)}")
+        raise HTTPException(status_code=502, detail="ERR_AI_MOD_NETWORK_ERROR: Erreur réseau")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"ERR_AI_MOD_ERROR: Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail=f"ERR_AI_MOD_ERROR: Erreur inattendue: {str(e)}")
+        raise HTTPException(status_code=500, detail="ERR_AI_MOD_ERROR: Erreur inattendue")
 
 
 # --- Reviews Endpoints ---
 @app.get("/api/reviews/latest", response_model=Dict)
-def api_get_latest_review():
-    edit_logs_dir = Path(__file__).resolve().parent.parent / "edit_logs"
+def api_get_latest_review(project_id: Optional[str] = None):
+    require_project(project_id)
+    from src.projects import PROJECTS_DIR
+    project_dir = safe_child(PROJECTS_DIR, validate_id(project_id))
+    edit_logs_dir = safe_child(project_dir, "edit_logs")
     if not edit_logs_dir.exists():
         return {"exists": False, "message": "No edit_logs directory found"}
     reviews = sorted(edit_logs_dir.glob("*_review.json"), reverse=True)
     if not reviews:
         return {"exists": False, "message": "No reviews found"}
-    latest_file = reviews[0]
+    latest_file = safe_child(edit_logs_dir, reviews[0].name)
     try:
         data = json.loads(latest_file.read_text())
-        data["file_path"] = str(latest_file.relative_to(Path(__file__).resolve().parent.parent))
+        data["file_path"] = str(latest_file.relative_to(project_dir))
         return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read review log: {e}")
@@ -345,7 +425,14 @@ app.mount("/js", StaticFiles(directory=STATIC_UI / "js"), name="ui-js")
 
 @app.get("/{path:path}")
 def ui_spa(path: str):
-    file_path = STATIC_UI / path
-    if file_path.exists() and file_path.is_file():
+    if path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API route not found")
+    try:
+        file_path = safe_child(STATIC_UI, path)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Not found")
+    if file_path.is_file():
+        if file_path.suffix not in {".html", ".css", ".js", ".png", ".svg", ".ico", ".woff2"}:
+            raise HTTPException(status_code=404, detail="Not found")
         return FileResponse(file_path)
     return FileResponse(STATIC_UI / "index.html")

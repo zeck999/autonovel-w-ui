@@ -23,11 +23,12 @@ from datetime import datetime
 from pathlib import Path
 
 # --- Configuration ---
-BASE_DIR = Path(__file__).parent
+from src.project_context import DATA_DIR, CODE_DIR
+BASE_DIR = DATA_DIR
 
 # Load .env file if present
 from dotenv import load_dotenv
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(CODE_DIR / ".env")
 
 # Judge uses Opus 4.6 (harsh, critical). Writer uses Sonnet 4.6 (fast, long context).
 # Intentionally different to avoid self-congratulation.
@@ -825,11 +826,6 @@ def evaluate_full():
 def update_state_on_error(error_code: str, error_msg: str):
     """Update state.json at root and in projects with error details."""
     state_files = [BASE_DIR / "state.json"]
-    projects_dir = BASE_DIR / "projects"
-    if projects_dir.exists():
-        for p_dir in projects_dir.iterdir():
-            if p_dir.is_dir():
-                state_files.append(p_dir / "state.json")
 
     for sf in state_files:
         try:

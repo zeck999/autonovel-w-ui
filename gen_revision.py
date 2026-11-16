@@ -8,8 +8,9 @@ import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
-BASE_DIR = Path(__file__).parent
-load_dotenv(BASE_DIR / ".env")
+from src.project_context import DATA_DIR, CODE_DIR
+BASE_DIR = DATA_DIR
+load_dotenv(CODE_DIR / ".env")
 
 WRITER_MODEL = os.environ.get("AUTONOVEL_WRITER_MODEL", "claude-sonnet-4-6")
 API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -58,7 +59,7 @@ def main():
     old_path = BASE_DIR / "chapters" / f"ch_{ch_num:02d}.md"
     old_text = old_path.read_text() if old_path.exists() else "(no existing draft)"
     
-    prompt = f"""Rewrite Chapter {ch_num} of "The Second Son of the House of Bells."
+    prompt = f"""Rewrite Chapter {ch_num} of this novel.
 
 REVISION BRIEF (follow this exactly):
 {brief}

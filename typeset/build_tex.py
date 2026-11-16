@@ -2,9 +2,14 @@
 """Build LaTeX source from chapter files."""
 import re
 import os
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from src.project_context import DATA_DIR
 
-CHAPTERS_DIR = "/home/jeffq/autonovel/chapters"
-OUT_DIR = "/home/jeffq/autonovel/typeset"
+CHAPTERS_DIR = str(DATA_DIR / "chapters")
+OUT_DIR = str(DATA_DIR / "typeset")
+Path(OUT_DIR).mkdir(parents=True, exist_ok=True)
 
 def latex_escape(t):
     t = t.replace('&', '\\&')
@@ -91,8 +96,9 @@ def make_drop_cap(latex_body):
     return drop + '\n\n' + rest
 
 chapters_tex = []
-for n in range(1, 20):
-    path = os.path.join(CHAPTERS_DIR, f"ch_{n:02d}.md")
+for chapter_path in sorted(Path(CHAPTERS_DIR).glob("ch_*.md")):
+    n = int(chapter_path.stem.split("_")[1])
+    path = str(chapter_path)
     with open(path) as f:
         text = f.read()
     

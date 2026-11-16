@@ -9,6 +9,8 @@ import shutil
 from pathlib import Path
 from typing import List, Dict, Optional
 from pydantic import BaseModel
+from src.security import safe_child, validate_id, project_file
+from src.jobs import project_guard
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 PROJECTS_DIR = BASE_DIR / "projects"
@@ -104,7 +106,7 @@ def create_project(name: str, concept: str, universe_id: Optional[str] = None) -
 
     # If universe_id provided, link/copy initial shared universe files if available
     if universe_id:
-        universe_path = BASE_DIR / "universes" / universe_id
+        universe_path = safe_child(BASE_DIR / "universes", validate_id(universe_id))
         if universe_path.exists():
             for fname in ["world.md", "characters.md", "canon.md"]:
                 u_file = universe_path / fname
@@ -137,7 +139,7 @@ def create_project(name: str, concept: str, universe_id: Optional[str] = None) -
     return state
 
 def get_project(project_id: str) -> Optional[Dict]:
-    p_path = PROJECTS_DIR / project_id
+    p_path = safe_child(PROJECTS_DIR, validate_id(project_id))
     if not p_path.exists() or not p_path.is_dir():
         return None
     state_file = p_path / "state.json"
@@ -165,7 +167,12 @@ def get_project(project_id: str) -> Optional[Dict]:
     return state
 
 def delete_project(project_id: str) -> bool:
-    p_path = PROJECTS_DIR / project_id
+    with project_guard(project_id):
+        return _delete_project(project_id)
+
+
+def _delete_project(project_id: str) -> bool:
+    p_path = safe_child(PROJECTS_DIR, validate_id(project_id))
     if p_path.exists() and p_path.is_dir():
         shutil.rmtree(p_path)
         return True
@@ -288,7 +295,7 @@ def create_project_from_wizard(payload: WizardCreate) -> Dict:
 
     # If universe_id provided, copy shared files
     if payload.universe_id:
-        universe_path = BASE_DIR / "universes" / payload.universe_id
+        universe_path = safe_child(BASE_DIR / "universes", validate_id(payload.universe_id))
         if universe_path.exists():
             for fname in ["world.md", "characters.md", "canon.md"]:
                 u_file = universe_path / fname
@@ -310,10 +317,10 @@ def create_project_from_wizard(payload: WizardCreate) -> Dict:
         "phase": "foundation",
         "current_focus": "planning",
         "iteration": 0,
-        "foundation_score": 0.85,
-        "lore_score": 0.80,
+        "foundation_score": 0.0,
+        "lore_score": 0.0,
         "chapters_drafted": 0,
-        "chapters_total": 10,
+        "chapters_total": 0,
         "novel_score": 0.0,
         "revision_cycle": 0,
         "debts": []
@@ -324,11 +331,11 @@ def create_project_from_wizard(payload: WizardCreate) -> Dict:
 
     return state
 
-STANDARD_PROJECT_FILES = ["seed.txt", "world.md", "characters.md", "outline.md", "canon.md"]
+STANDARD_PROJECT_FILES = ["seed.txt", "world.md", "characters.md", "outline.md", "canon.md", "voice.md"]
 
 def list_project_files(project_id: str) -> List[Dict]:
     ensure_projects_dir()
-    p_path = PROJECTS_DIR / project_id
+    p_path = safe_child(PROJECTS_DIR, validate_id(project_id))
     if not p_path.exists():
         return []
     files = []
@@ -342,7 +349,7 @@ def list_project_files(project_id: str) -> List[Dict]:
             "size": f_path.stat().st_size if f_path.exists() else 0
         })
     for item in p_path.iterdir():
-        if item.is_file() and item.name not in seen and item.suffix in [".md", ".txt", ".json"]:
+        if item.is_file() and not item.is_symlink() and item.name not in seen and item.name == "MYSTERY.md":
             seen.add(item.name)
             files.append({
                 "name": item.name,
@@ -352,7 +359,7 @@ def list_project_files(project_id: str) -> List[Dict]:
     chapters_dir = p_path / "chapters"
     if chapters_dir.exists() and chapters_dir.is_dir():
         for item in sorted(chapters_dir.iterdir()):
-            if item.is_file() and item.suffix in [".md", ".txt", ".json"]:
+            if item.is_file() and not item.is_symlink() and __import__("re").fullmatch(r"ch_\d{2,}\.md", item.name):
                 rel_name = f"chapters/{item.name}"
                 seen.add(rel_name)
                 files.append({
@@ -363,33 +370,35 @@ def list_project_files(project_id: str) -> List[Dict]:
     return files
 
 def get_project_file(project_id: str, filename: str) -> Optional[str]:
-    ensure_projects_dir()
-    p_path = PROJECTS_DIR / project_id
-    if not p_path.exists():
+    p_path = safe_child(PROJECTS_DIR, validate_id(project_id))
+    f_path = project_file(p_path, filename)
+    if not f_path.is_file():
         return None
-    f_path = (p_path / filename).resolve()
-    if not str(f_path).startswith(str(p_path.resolve())):
-        return None
-    if not f_path.exists():
-        if filename in STANDARD_PROJECT_FILES or f_path.suffix in [".md", ".txt"]:
-            return ""
-        return None
-    try:
-        return f_path.read_text(encoding="utf-8")
-    except Exception:
-        return None
+    return f_path.read_text(encoding="utf-8")
 
-def save_project_file(project_id: str, filename: str, content: str) -> bool:
-    ensure_projects_dir()
-    p_path = PROJECTS_DIR / project_id
-    if not p_path.exists():
-        return False
-    f_path = (p_path / filename).resolve()
-    if not str(f_path).startswith(str(p_path.resolve())):
-        return False
-    try:
+
+class FileConflictError(ValueError):
+    pass
+
+
+def save_project_file(project_id: str, filename: str, content: str,
+                      expected_content: Optional[str] = None) -> bool:
+    with project_guard(project_id):
+        p_path = safe_child(PROJECTS_DIR, validate_id(project_id))
+        if not p_path.is_dir():
+            return False
+        f_path = project_file(p_path, filename)
+        current = f_path.read_text(encoding="utf-8") if f_path.exists() else ""
+        if expected_content is not None and current != expected_content:
+            raise FileConflictError("File changed since it was loaded; reload before saving")
         f_path.parent.mkdir(parents=True, exist_ok=True)
-        f_path.write_text(content, encoding="utf-8")
+        import os
+        import tempfile
+        fd, temporary = tempfile.mkstemp(dir=f_path.parent, prefix=".save-")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as output:
+                output.write(content)
+            os.replace(temporary, f_path)
+        finally:
+            Path(temporary).unlink(missing_ok=True)
         return True
-    except Exception:
-        return False

@@ -3,6 +3,7 @@
  */
 
 import { api } from './api.js';
+import { store } from './store.js';
 
 export function initReviews() {
     const reviewBtn = document.getElementById('current-review-btn');
@@ -109,7 +110,8 @@ export function initReviews() {
                     evalBtn.textContent = 'Évaluation en cours...';
                     evalBtn.disabled = true;
                     try {
-                        await api.evaluateProject({});
+                        if (!store.state.activeProjectId) throw new Error('Sélectionnez un projet avant de lancer une évaluation.');
+                        await api.evaluateProject({ project_id: store.state.activeProjectId });
                         const freshData = await api.getLatestReview();
                         currentReviewData = freshData;
                         reviewModalBody.innerHTML = renderModalContent(freshData);

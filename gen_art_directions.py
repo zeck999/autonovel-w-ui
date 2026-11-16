@@ -9,8 +9,9 @@ import re
 from pathlib import Path
 from dotenv import load_dotenv
 
-BASE_DIR = Path(__file__).parent
-load_dotenv(BASE_DIR / ".env", override=True)
+from src.project_context import DATA_DIR, CODE_DIR
+BASE_DIR = DATA_DIR
+load_dotenv(CODE_DIR / ".env", override=True)
 
 WRITER_MODEL = os.environ.get("AUTONOVEL_WRITER_MODEL", "claude-sonnet-4-6")
 ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY", "")

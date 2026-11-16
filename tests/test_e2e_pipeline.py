@@ -10,17 +10,18 @@ from fastapi.testclient import TestClient
 import httpx
 
 from src.api import app
+from tests_helpers import wait_job
 
 client = TestClient(app)
 
-@patch("src.pipeline_adapter.subprocess.run")
+@patch("src.api.run_pipeline_phase")
 def test_e2e_user_journey(mock_subprocess_run):
     # Mock successful pipeline execution subprocess run
     mock_res = MagicMock()
     mock_res.returncode = 0
     mock_res.stdout = "Pipeline phase executed successfully with absolute path."
     mock_res.stderr = ""
-    mock_subprocess_run.return_value = mock_res
+    mock_subprocess_run.return_value = {"returncode": 0, "last_run_output": "Simulated", "phase": "foundation"}
 
     # 1. Create a new project ("Test Projet E2E")
     payload = {
@@ -60,15 +61,11 @@ def test_e2e_user_journey(mock_subprocess_run):
         "project_id": pid
     }
     response = client.post("/api/pipeline/run", json=pipeline_payload)
-    assert response.status_code == 200
-    pipeline_data = response.json()
+    assert response.status_code == 202
+    pipeline_data = wait_job(client, response.json()["id"])["result"]
     assert pipeline_data.get("returncode") == 0
 
-    # Verify subprocess.run was called with absolute path to run_pipeline.py
-    assert mock_subprocess_run.called
-    called_cmd = mock_subprocess_run.call_args[0][0]
-    expected_script = str(Path(__file__).resolve().parent.parent / "run_pipeline.py")
-    assert expected_script in called_cmd
+    assert mock_subprocess_run.call_args.args == ("foundation", pid, None)
 
     # 5. Cleanup: Delete project
     response = client.delete(f"/api/projects/{pid}")

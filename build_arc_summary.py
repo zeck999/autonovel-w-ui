@@ -9,8 +9,9 @@ import re
 from pathlib import Path
 from dotenv import load_dotenv
 
-BASE_DIR = Path(__file__).parent
-load_dotenv(BASE_DIR / ".env")
+from src.project_context import DATA_DIR, CODE_DIR
+BASE_DIR = DATA_DIR
+load_dotenv(CODE_DIR / ".env")
 
 WRITER_MODEL = os.environ.get("AUTONOVEL_WRITER_MODEL", "claude-sonnet-4-6")
 API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -52,8 +53,8 @@ def extract_key_passages(text):
 def main():
     summaries = []
     
-    for ch in range(1, 20):
-        path = CHAPTERS_DIR / f"ch_{ch:02d}.md"
+    for path in sorted(CHAPTERS_DIR.glob("ch_*.md")):
+        ch = int(path.stem.split("_")[1])
         text = path.read_text()
         wc = len(text.split())
         opening, closing, dialogue = extract_key_passages(text)
@@ -80,24 +81,16 @@ def main():
         print(f"Ch {ch}: summarized ({wc}w)")
     
     # Calculate total word count
-    total_wc = sum(len((CHAPTERS_DIR / f"ch_{c:02d}.md").read_text().split()) for c in range(1, 20))
+    total_wc = sum(len((CHAPTERS_DIR / f"ch_{c:02d}.md").read_text().split()) for c in [int(p.stem.split("_")[1]) for p in CHAPTERS_DIR.glob("ch_*.md")])
     
     # Assemble
-    full = f"""# THE SECOND SON OF THE HOUSE OF BELLS
-## Full-Arc Summary for Reader Panel
+    seed_path = BASE_DIR / "seed.txt"
+    premise = seed_path.read_text(encoding="utf-8") if seed_path.exists() else "See project planning documents."
+    full = f"""# Novel Arc Summary
 
-This document contains chapter summaries, opening/closing passages,
-and key dialogue for all 23 chapters. Total novel: {total_wc:,} words.
+These summaries cover {len(summaries)} chapters ({total_wc:,} words).
 
-PREMISE: In Cantamura, a city where law is sung into binding through
-specific musical intervals, 14-year-old Cass Bellwright can hear when
-someone is lying -- a quarter-tone between F and F-sharp that causes
-him physical pain. His older brother Perin has been bound to service
-in the House of Corda for 10 years through a contract their father
-allowed. The bells their family maintains contain a secret: a question
-("Do you consent to be bound?") embedded in the sub-harmonics by the
-city's founder 200 years ago. No one has ever heard it. No one has
-ever answered. Every binding in Cantamura is technically void.
+PREMISE: {premise}
 
 ---
 

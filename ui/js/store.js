@@ -3,6 +3,7 @@
  */
 
 import { api } from './api.js';
+import { canLeaveEditor, clearNavigationGuard } from './editor-state.js';
 
 class Store {
     constructor() {
@@ -33,6 +34,9 @@ class Store {
     }
 
     setActiveProject(projectId) {
+        if (projectId !== this.state.activeProjectId && !canLeaveEditor()) return false;
+        clearNavigationGuard();
+        this.state.selectedProjectFile = null;
         this.state.activeProjectId = projectId;
         if (projectId) {
             localStorage.setItem('autonovel_active_project', projectId);

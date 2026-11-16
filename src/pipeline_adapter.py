@@ -1,306 +1,144 @@
-"""
-src/pipeline_adapter.py — Integration adapter with existing Autonovel scripts.
-Invokes run_pipeline.py, evaluate.py, and manages pipeline execution per project.
-"""
-
-import subprocess
+"""Run application scripts against explicitly isolated novel directories."""
 import json
-import re
-import shutil
 import logging
+import os
+import subprocess
+import sys
+import threading
 from pathlib import Path
-from typing import Dict, Optional, List
+from typing import Dict, Optional
+from src.project_context import execute, project_directory
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 logger = logging.getLogger(__name__)
+_LOCKS: dict[str, threading.Lock] = {}
+_LOCKS_GUARD = threading.Lock()
+PHASES = {
+    "foundation": ("run_pipeline.py", "foundation"),
+    "drafting": ("run_pipeline.py", "drafting"),
+    "draft": ("run_pipeline.py", "drafting"),
+    "revision": ("run_pipeline.py", "revision"),
+    "revise": ("run_pipeline.py", "revision"),
+    "export": ("run_pipeline.py", "export"),
+    "typeset": ("run_pipeline.py", "export"),
+    "outline": ("gen_outline.py", None),
+    "review": ("evaluate.py", "--full"),
+    "audiobook": ("gen_audiobook.py", None),
+}
 
-# Liste des fichiers et dossiers à synchroniser
-SYNC_FILES_AND_DIRS = [
-    "seed.txt",
-    "state.json",
-    "world.md",
-    "characters.md",
-    "outline.md",
-    "canon.md",
-    "voice.md",
-    "chapters/",
-    "briefs/",
-    "edit_logs/",
-    "eval_logs/"
-]
+
+def _project(project_id):
+    return project_directory(project_id, BASE_DIR / "projects")
+
+
+def _lock(directory):
+    with _LOCKS_GUARD:
+        return _LOCKS.setdefault(str(directory), threading.Lock())
+
 
 def sync_project_to_root(project_id: str) -> Dict:
-    """
-    Synchronise les fichiers du projet vers la racine (BASE_DIR).
-    Copie les fichiers depuis projects/{id}/ vers BASE_DIR.
-    """
+    """Compatibility shim: no global copying is ever performed."""
     try:
-        project_dir = BASE_DIR / "projects" / project_id
-        if not project_dir.exists():
-            return {"success": False, "error": f"Project directory {project_dir} does not exist"}
-        
-        sync_results = []
-        for item in SYNC_FILES_AND_DIRS:
-            src = project_dir / item.rstrip('/')
-            dst = BASE_DIR / item.rstrip('/')
-            
-            if src.exists():
-                # Pour les dossiers, on utilise copytree avec overwrite
-                if src.is_dir():
-                    # Créer le dossier de destination si nécessaire
-                    dst.parent.mkdir(parents=True, exist_ok=True)
-                    # Copier récursivement
-                    if dst.exists():
-                        shutil.rmtree(dst)
-                    shutil.copytree(src, dst)
-                    sync_results.append(f"Copied directory: {item}")
-                else:
-                    # Pour les fichiers
-                    shutil.copy2(src, dst)
-                    sync_results.append(f"Copied file: {item}")
-        
-        logger.info(f"Synchronized project {project_id} to root: {len(sync_results)} items")
-        return {
-            "success": True,
-            "items_synced": sync_results,
-            "project_id": project_id,
-            "direction": "project_to_root"
-        }
-    except Exception as e:
-        logger.error(f"Error syncing project {project_id} to root: {e}")
-        return {
-            "success": False,
-            "error": str(e),
-            "project_id": project_id,
-            "direction": "project_to_root"
-        }
+        _project(project_id)
+        return {"success": True, "items_synced": [], "isolated": True}
+    except ValueError as exc:
+        return {"success": False, "error": str(exc)}
 
-def sync_root_to_project(project_id: str) -> Dict:
-    """
-    Synchronise les fichiers de la racine (BASE_DIR) vers le projet.
-    Copie les fichiers depuis BASE_DIR vers projects/{id}/.
-    """
-    try:
-        project_dir = BASE_DIR / "projects" / project_id
-        if not project_dir.exists():
-            return {"success": False, "error": f"Project directory {project_dir} does not exist"}
-        
-        sync_results = []
-        for item in SYNC_FILES_AND_DIRS:
-            src = BASE_DIR / item.rstrip('/')
-            dst = project_dir / item.rstrip('/')
-            
-            if src.exists():
-                # Pour les dossiers, on utilise copytree avec overwrite
-                if src.is_dir():
-                    # Créer le dossier de destination si nécessaire
-                    dst.parent.mkdir(parents=True, exist_ok=True)
-                    # Copier récursivement
-                    if dst.exists():
-                        shutil.rmtree(dst)
-                    shutil.copytree(src, dst)
-                    sync_results.append(f"Copied directory: {item}")
-                else:
-                    # Pour les fichiers
-                    shutil.copy2(src, dst)
-                    sync_results.append(f"Copied file: {item}")
-        
-        logger.info(f"Synchronized root to project {project_id}: {len(sync_results)} items")
-        return {
-            "success": True,
-            "items_synced": sync_results,
-            "project_id": project_id,
-            "direction": "root_to_project"
-        }
-    except Exception as e:
-        logger.error(f"Error syncing root to project {project_id}: {e}")
+
+sync_root_to_project = sync_project_to_root
+
 
 def get_pipeline_status(project_id: Optional[str] = None) -> Dict:
-    state_file = BASE_DIR / "state.json"
-    if project_id:
-        p_state = BASE_DIR / "projects" / project_id / "state.json"
-        if p_state.exists():
-            state_file = p_state
+    directory = _project(project_id) if project_id else BASE_DIR
+    path = directory / "state.json"
+    if path.exists():
+        return json.loads(path.read_text(encoding="utf-8"))
+    return {"phase": "foundation", "current_focus": "planning", "iteration": 0,
+            "foundation_score": 0.0, "chapters_drafted": 0,
+            "chapters_total": 0, "novel_score": 0.0, "revision_cycle": 0}
 
-    if state_file.exists():
+
+def _score(output):
+    """Prefer the explicit JSON protocol; accept pretty-printed CLI JSON too."""
+    decoder = json.JSONDecoder()
+    for index, char in enumerate(output):
+        if char != "{":
+            continue
         try:
-            with open(state_file) as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {
-        "phase": "foundation",
-        "current_focus": "planning",
-        "iteration": 0,
-        "foundation_score": 0.0,
-        "chapters_drafted": 0,
-        "chapters_total": 0,
-        "novel_score": 0.0,
-        "revision_cycle": 0
-    }
-    if project_id:
-        p_state = BASE_DIR / "projects" / project_id / "state.json"
-        if p_state.exists():
-            state_file = p_state
+            result, _ = decoder.raw_decode(output[index:])
+        except ValueError:
+            continue
+        for key in ("overall_score", "novel_score", "foundation_score"):
+            value = result.get(key) if isinstance(result, dict) else None
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                return float(value)
+    return None
 
-    if state_file.exists():
-        try:
-            with open(state_file) as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {
-        "phase": "foundation",
-        "current_focus": "planning",
-        "iteration": 0,
-        "foundation_score": 0.0,
-        "chapters_drafted": 0,
-        "chapters_total": 0,
-        "novel_score": 0.0,
-        "revision_cycle": 0
-    }
 
-def run_pipeline_phase(phase: str, project_id: Optional[str] = None, max_cycles: Optional[int] = None) -> Dict:
-    """
-    Exécute une phase du pipeline avec synchronisation bidirectionnelle.
-    """
-    # 1. Synchronisation avant exécution (projet → racine)
-    sync_before = None
-    if project_id:
-        sync_before = sync_project_to_root(project_id)
-        if not sync_before.get("success", False):
-            logger.warning(f"Sync before pipeline failed: {sync_before.get('error')}")
-    
-    # Déterminer le script à exécuter
-    script_to_run = "run_pipeline.py"
-    actual_phase = phase
-
-    if phase == "outline":
-        script_to_run = "gen_outline.py"
-    elif phase == "draft":
-        actual_phase = "drafting"
-    elif phase == "review":
-        script_to_run = "evaluate.py"
-    elif phase == "revise":
-        actual_phase = "revision"
-    elif phase == "typeset":
-        actual_phase = "export"
-    elif phase == "audiobook":
-        script_to_run = "gen_audiobook.py"
-
-    # Construire la commande
-    if script_to_run == "run_pipeline.py":
-        cmd = f"uv run python {BASE_DIR / 'run_pipeline.py'} --phase {actual_phase}"
-    elif script_to_run == "evaluate.py":
-        cmd = f"uv run python {BASE_DIR / 'evaluate.py'} --full"
-    else:
-        cmd = f"uv run python {BASE_DIR / script_to_run}"
-
-    if max_cycles is not None and script_to_run == "run_pipeline.py":
-        cmd += f" --max-cycles {max_cycles}"
-
-    # Toujours exécuter depuis BASE_DIR après la synchronisation
-    cwd = BASE_DIR
-
+def _run(project_id, args, timeout, *, record_score=False):
+    directory = _project(project_id)
+    lock = _lock(directory)
+    if not lock.acquire(blocking=False):
+        return {"error": "A task is already running for this project", "returncode": -1}
     try:
-        # 2. Exécuter le pipeline
-        res = subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd=str(cwd), timeout=300)
-        
-        # 3. Synchronisation après exécution (racine → projet)
-        sync_after = None
-        if project_id:
-            sync_after = sync_root_to_project(project_id)
-            if not sync_after.get("success", False):
-                logger.warning(f"Sync after pipeline failed: {sync_after.get('error')}")
-        
-        # Récupérer le statut
+        env = dict(os.environ, AUTONOVEL_PROJECT_DIR=str(directory))
+        result = execute([sys.executable, *args], cwd=directory, timeout=timeout, env=env)
         status = get_pipeline_status(project_id)
-        if res.returncode == 0:
-            status["phase"] = phase
+        if record_score and result.returncode == 0:
+            score = _score(result.stdout)
+            if score is None:
+                raise ValueError("Evaluation did not return a numeric JSON score")
+            status["novel_score"] = score
+            state = dict(status)
+            state.pop("error", None)
+            state.pop("error_code", None)
+            temporary = directory / "state.json.tmp"
+            temporary.write_text(json.dumps(state, indent=2), encoding="utf-8")
+            temporary.replace(directory / "state.json")
+        status.update(last_run_output=result.stdout[-4000:],
+                      last_run_returncode=result.returncode, returncode=result.returncode)
+        if result.returncode:
+            status["error"] = result.stderr[-2000:] or "Pipeline execution failed"
+        else:
             status.pop("error", None)
             status.pop("error_code", None)
-        
-        # Ajouter les informations de sortie
-        status["last_run_output"] = res.stdout[-500:] if res.stdout else ""
-        status["last_run_returncode"] = res.returncode
-        status["returncode"] = res.returncode
-        
-        # Ajouter les informations de synchronisation
-        if project_id:
-            status["sync_before"] = sync_before
-            status["sync_after"] = sync_after
-        
-        if res.returncode != 0:
-            status["error"] = res.stderr[-500:] if res.stderr else f"Pipeline failed with return code {res.returncode}"
-            
         return status
     except subprocess.TimeoutExpired:
-        return {"error": "Pipeline phase timed out", "returncode": -1}
-    except Exception as e:
-        return {"error": str(e), "returncode": -1}
+        return {"error": "Operation timed out; subprocess group stopped", "returncode": -1}
+    finally:
+        lock.release()
+
+
+def run_pipeline_phase(phase: str, project_id: Optional[str] = None,
+                       max_cycles: Optional[int] = None) -> Dict:
+    try:
+        if phase not in PHASES:
+            raise ValueError("Unsupported pipeline phase")
+        if max_cycles is not None and (isinstance(max_cycles, bool) or not 1 <= max_cycles <= 6):
+            raise ValueError("max_cycles must be between 1 and 6")
+        script, option = PHASES[phase]
+        args = [str(BASE_DIR / script)]
+        if script == "run_pipeline.py":
+            args += ["--phase", option]
+            if max_cycles is not None:
+                args += ["--max-cycles", str(max_cycles)]
+        elif option:
+            args.append(option)
+        # A complete phase contains many model calls; API jobs own its lifetime.
+        return _run(project_id, args, timeout=6 * 60 * 60)
+    except (ValueError, OSError) as exc:
+        return {"error": str(exc), "returncode": -1}
+
 
 def evaluate_project(project_id: Optional[str] = None, chapter_num: Optional[int] = None) -> Dict:
-    script_path = BASE_DIR / "evaluate.py"
-    cmd = f"uv run python {script_path}"
-    if chapter_num is not None:
-        cmd += f" --chapter={chapter_num}"
-    else:
-        cmd += " --full"
-
-    cwd = BASE_DIR
-    if project_id:
-        p_path = BASE_DIR / "projects" / project_id
-        if p_path.exists():
-            cwd = p_path
-
     try:
-        res = subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd=str(cwd), timeout=120)
-        score = None
-        match = re.search(r'(?:overall_score|novel_score):\s*([0-9.]+)', res.stdout)
-        if match:
-            try:
-                score = float(match.group(1))
-            except ValueError:
-                pass
-
-        error_code = None
-        for code in ["ERR_JUDGE_UNAUTHORIZED_401", "ERR_JUDGE_RATE_LIMIT_429", "ERR_JUDGE_TIMEOUT", "ERR_JUDGE_NETWORK_ERROR", "ERR_JUDGE_ERROR"]:
-            if code in res.stdout or code in res.stderr:
-                error_code = code
-                break
-        if not error_code and res.returncode != 0:
-            error_code = "ERR_JUDGE_ERROR"
-
-        # Update state.json in lease / project / root
-        state_files = [BASE_DIR / "state.json"]
-        if project_id:
-            p_state = BASE_DIR / "projects" / project_id / "state.json"
-            if p_state.exists():
-                state_files.append(p_state)
-
-        for sf in state_files:
-            if sf.exists():
-                try:
-                    with open(sf, "r") as f:
-                        st = json.load(f)
-                    if error_code:
-                        st["error_code"] = error_code
-                        st["error"] = res.stderr or res.stdout[-300:]
-                    else:
-                        st.pop("error_code", None)
-                        st.pop("error", None)
-                    with open(sf, "w") as f:
-                        json.dump(st, f, indent=2)
-                except Exception:
-                    pass
-
-        return {
-            "returncode": res.returncode,
-            "output": res.stdout,
-            "error": res.stderr if res.returncode != 0 else None,
-            "error_code": error_code,
-            "score": score
-        }
-    except Exception as e:
-        return {"returncode": -1, "output": "", "error": str(e), "error_code": "ERR_JUDGE_EXCEPTION", "score": None}
+        if chapter_num is not None and (isinstance(chapter_num, bool) or chapter_num < 1):
+            raise ValueError("chapter_num must be positive")
+        args = [str(BASE_DIR / "evaluate.py"),
+                f"--chapter={chapter_num}" if chapter_num is not None else "--full"]
+        status = _run(project_id, args, timeout=900, record_score=True)
+        status["score"] = status.get("novel_score") if status.get("returncode") == 0 else None
+        status["output"] = status.get("last_run_output", "")
+        return status
+    except (ValueError, OSError) as exc:
+        return {"error": str(exc), "returncode": -1}
