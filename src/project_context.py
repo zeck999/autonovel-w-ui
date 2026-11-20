@@ -29,6 +29,83 @@ def project_directory(project_id: str, root: Path | None = None) -> Path:
     return path
 
 
+def ensure_data_editable(directory: Path) -> None:
+    """Fail closed on published novels or interrupted publication transactions.
+
+    This guard is intentionally separate from data_dir(): reading/evaluation of
+    a published novel is allowed. It protects application entry points, not
+    against someone editing files directly with OS permissions.
+    """
+    import json
+    directory = Path(directory).resolve()
+    for name in (".publication.json", ".publication-transaction.json", ".publication_transaction.json"):
+        marker = directory / name
+        if marker.is_symlink():
+            raise ValueError("Invalid publication metadata")
+        if not marker.exists():
+            continue
+        try:
+            metadata = json.loads(marker.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            raise ValueError("Unreadable publication metadata; editing is blocked")
+        if not isinstance(metadata, dict):
+            raise ValueError("Invalid publication metadata; editing is blocked")
+        if name != ".publication.json" or metadata.get("publication_status") == "published" or metadata.get("status") in {"published", "publishing"}:
+            raise ValueError("Published novels are read-only; use the proofread correction workflow")
+
+
+def _narrative_fingerprint(directory: Path) -> str:
+    import hashlib
+    digest = hashlib.sha256()
+    names = ("seed.txt", "world.md", "characters.md", "outline.md", "canon.md", "voice.md", "MYSTERY.md")
+    paths = [directory / name for name in names]
+    paths += sorted((directory / "chapters").glob("ch_*.md"))
+    for path in paths:
+        if path.is_file() and not path.is_symlink():
+            digest.update(str(path.relative_to(directory)).encode())
+            digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def notify_data_changed(directory: Path) -> None:
+    """Invalidate analysis after a CLI mutation; never call a provider here."""
+    try:
+        from src.coherence import mark_directory_changed
+    except ImportError:
+        # During upgrades the watcher may not be installed yet. Leave a durable
+        # dirty marker rather than silently considering previous reports valid.
+        import json
+        (Path(directory) / ".coherence-dirty.json").write_text(
+            json.dumps({"status": "stale", "reason": "CLI mutation"}), encoding="utf-8")
+    else:
+        mark_directory_changed(Path(directory))
+
+
+def guard_mutating_cli(directory: Path) -> None:
+    """Reject early (before API use) and invalidate if a CLI changed manuscript."""
+    import atexit
+    directory = Path(directory).resolve()
+    ensure_data_editable(directory)
+    # Shared generation leases prevent a simultaneous publication from freezing
+    # a snapshot while this CLI (or a nested generator) can still write.
+    import fcntl
+    from src.security import safe_child
+    lease = safe_child(directory, '.generation.lock').open('a+')
+    try:
+        fcntl.flock(lease, fcntl.LOCK_SH | fcntl.LOCK_NB)
+        ensure_data_editable(directory)
+    except BaseException:
+        lease.close()
+        raise
+    atexit.register(lease.close)
+    before = _narrative_fingerprint(directory)
+
+    def after():
+        if directory.exists() and _narrative_fingerprint(directory) != before:
+            notify_data_changed(directory)
+    atexit.register(after)
+
+
 def execute(args: list[str], *, cwd: Path, timeout: int, env=None):
     """Run without a shell and terminate the whole process group on timeout.
 

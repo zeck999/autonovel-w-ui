@@ -4,6 +4,9 @@ Generate diverse art direction concepts from a novel's visual style.
 Called by gen_art.py curate to produce genuinely different variants.
 """
 import os
+from src.text_provider import post_messages as _provider_post_messages
+from src.narrative_contract import apply_contract as _provider_post_messages
+from src.narrative_contract import apply_contract
 import json
 import re
 from pathlib import Path
@@ -11,16 +14,30 @@ from dotenv import load_dotenv
 
 from src.project_context import DATA_DIR, CODE_DIR
 BASE_DIR = DATA_DIR
-load_dotenv(CODE_DIR / ".env", override=True)
+
+
+def post_messages(url, **kwargs):
+    kwargs['json'] = apply_contract(kwargs.get('json', {}), BASE_DIR)
+    return _provider_post_messages(url, **kwargs)
+
+
+
+def post_messages(url, **kwargs):
+    kwargs['json'] = apply_contract(kwargs.get('json', {}), BASE_DIR)
+    return _provider_post_messages(url, **kwargs)
+
+from src.project_context import guard_mutating_cli
+guard_mutating_cli(BASE_DIR)
+load_dotenv(CODE_DIR / ".env", override=False)
 
 WRITER_MODEL = os.environ.get("AUTONOVEL_WRITER_MODEL", "claude-sonnet-4-6")
-ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+ANTHROPIC_KEY = (os.environ.get("AUTONOVEL_TEXT_API_KEY", "") if os.environ.get("AUTONOVEL_TEXT_PROVIDER") == "openai-compatible" else os.environ.get("ANTHROPIC_API_KEY", ""))
 ANTHROPIC_BASE = os.environ.get("AUTONOVEL_API_BASE_URL", "https://api.anthropic.com")
 
 
 def call_claude(prompt, max_tokens=3000):
     import httpx
-    resp = httpx.post(
+    resp = post_messages(
         f"{ANTHROPIC_BASE}/v1/messages",
         headers={
             "x-api-key": ANTHROPIC_KEY,
@@ -43,7 +60,7 @@ def generate_directions(art_type, style, n=6, world_excerpt=""):
     """Generate N fundamentally different art direction prompts."""
 
     if art_type == "cover":
-        task = f"""You are an art director generating {n} RADICALLY DIFFERENT cover concepts for a fantasy novel.
+        task = f"""You are an art director generating {n} RADICALLY DIFFERENT cover concepts for a novel.
 
 The novel's visual style brief:
   Style: {style.get('art_style', '')}
@@ -77,7 +94,7 @@ Output a JSON array of {n} objects, each with:
 JSON array only."""
 
     elif art_type == "ornament":
-        task = f"""You are a book designer generating {n} RADICALLY DIFFERENT chapter ornament styles for a fantasy novel.
+        task = f"""You are a book designer generating {n} RADICALLY DIFFERENT chapter ornament styles for a novel.
 
 The novel's visual style:
   Style: {style.get('art_style', '')}

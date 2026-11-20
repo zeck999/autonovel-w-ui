@@ -1,106 +1,109 @@
-"""Single-process background jobs. Run one server worker; never share project writes."""
+"""Durable single-worker jobs with explicit cancellation and no automatic paid retry."""
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from contextvars import ContextVar
 from threading import Lock
 from uuid import uuid4
-from copy import deepcopy
+import json
+import os
+from src import task_store
 
-_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="autonovel")
-_mutex = Lock()
-_jobs = {}
-_active = {}
-_locks = {}
-MAX_JOBS = 200
+_executor=ThreadPoolExecutor(max_workers=4, thread_name_prefix='autonovel')
+_mutex=Lock();_locks={}
+_current=ContextVar('autonovel_job',default=None)
+MAX_JOBS=200  # compatibility; durable idempotency records are never evicted
 
 
-class ProjectBusyError(ValueError):
-    pass
+class ProjectBusyError(ValueError): pass
+class JobCancelled(ValueError): pass
 
 
 def _lock_for(project_id):
-    with _mutex:
-        return _locks.setdefault(project_id, Lock())
+    with _mutex: return _locks.setdefault(project_id,Lock())
 
 
 @contextmanager
 def project_guard(project_id):
-    lock = _lock_for(project_id)
-    if not lock.acquire(blocking=False):
-        raise ProjectBusyError("An operation is already running for this project")
-    try:
-        yield
-    finally:
-        lock.release()
+    lock=_lock_for(project_id)
+    if not lock.acquire(blocking=False):raise ProjectBusyError('An operation is already running for this project')
+    try:yield
+    finally:lock.release()
 
 
-def get_job(job_id):
-    with _mutex:
-        job = _jobs.get(job_id)
-        return deepcopy(job) if job else None
+def current_job(): return _current.get() or os.environ.get('AUTONOVEL_TASK_ID')
 
 
-def submit_job(project_id, operation, function, idempotency_key=None):
-    """Return an existing in-flight operation; reject competing project operations."""
-    if idempotency_key and (len(idempotency_key) > 128 or not idempotency_key.isascii()):
-        raise ValueError("Invalid idempotency key")
-    with _mutex:
+def child_context():
+    job=current_job()
+    return {'AUTONOVEL_TASK_ID':job,'AUTONOVEL_TASK_DB':str(task_store.database_path().resolve())} if job else {}
+
+
+def get_job(job_id): return task_store.read(job_id)
+
+
+def check_cancelled():
+    job_id=current_job()
+    job=get_job(job_id) if job_id else None
+    if job and job['status'] in {'cancel_requested','cancelled'}:raise JobCancelled('Cancellation requested; remote outcome may be unknown')
+
+
+def cancel_job(job_id):
+    job=get_job(job_id)
+    if not job:return None
+    if job['status'] in {'queued','running'}:
+        job=task_store.update(job_id,status='cancel_requested',cancellation='requested; an already submitted provider call may still be billed')
+        task_store.event(job_id,'cancel_requested')
+    return job
+
+
+def list_jobs(project_id=None):
+    with task_store.connection() as db:
+        task_store.recover(db)
+        rows=db.execute('SELECT payload FROM tasks '+('WHERE project=? ' if project_id else '')+'ORDER BY rowid DESC LIMIT 200',(project_id,) if project_id else ())
+        return [json.loads(row[0]) for row in rows]
+
+
+def report_progress(step, progress=None):
+    job=current_job()
+    if job:
+        task_store.update(job,step=step,progress=progress)
+        task_store.event(job,'progress',{'step':step,'progress':progress})
+
+
+def submit_job(project_id, operation, function, idempotency_key=None, serialize=True):
+    if idempotency_key and (len(idempotency_key)>128 or not idempotency_key.isascii()):raise ValueError('Invalid idempotency key')
+    with task_store.connection() as db:
+        db.execute('BEGIN IMMEDIATE');task_store.recover(db)
         if idempotency_key:
-            for previous in _jobs.values():
-                if previous.get('idempotency_key') == idempotency_key and previous['project_id'] == project_id:
-                    if previous['operation'] != operation:
-                        raise ValueError("Idempotency key already used for a different operation")
-                    return deepcopy(previous)
-        existing = _active.get(project_id)
-        if existing:
-            job = _jobs[existing]
-            if job['operation'] == operation:
-                return deepcopy(job)
-            raise ProjectBusyError("Another operation is running for this project")
-        lock = _locks.setdefault(project_id, Lock())
-        if not lock.acquire(blocking=False):
-            raise ProjectBusyError("Project is being edited")
-        job_id = uuid4().hex
-        job = dict(id=job_id, project_id=project_id, operation=operation,
-                   status="queued", progress="Waiting", result=None, error=None, idempotency_key=idempotency_key,
-                   created_at=datetime.now(timezone.utc).isoformat())
-        # Bound memory, retaining running tasks.
-        for old_id in list(_jobs):
-            if len(_jobs) < MAX_JOBS:
-                break
-            if _jobs[old_id]['status'] in ('succeeded', 'failed'):
-                del _jobs[old_id]
-        _jobs[job_id] = job
-        _active[project_id] = job_id
-        initial = deepcopy(job)
-
-    def execute():
+            row=db.execute('SELECT * FROM tasks WHERE project=? AND idem=?',(project_id,idempotency_key)).fetchone()
+            if row:
+                if row['operation']!=operation:raise ValueError('Idempotency key already used for a different operation')
+                return json.loads(row['payload'])
+        row=db.execute("SELECT * FROM tasks WHERE project=? AND state IN ('queued','running','cancel_requested')",(project_id,)).fetchone()
+        if row:
+            if row['operation']==operation:return json.loads(row['payload'])
+            raise ProjectBusyError('Another task is active for this project')
+        job={'id':uuid4().hex,'project_id':project_id,'operation':operation,'idempotency_key':idempotency_key,'status':'queued','created_at':task_store.now(),'started_at':None,'finished_at':None,'result':None,'error':None}
+        db.execute('INSERT INTO tasks VALUES(?,?,?,?,?,?,?)',(job['id'],project_id,operation,idempotency_key,'queued',os.getpid(),json.dumps(job)))
+    def run():
+        token=_current.set(job['id'])
         try:
-            with _mutex:
-                job.update(status="running", progress="Running")
-            result = function()
-            if isinstance(result, dict) and (result.get('error') or result.get('returncode', 0) != 0):
-                raise RuntimeError(result.get('error') or 'Operation failed')
-            with _mutex:
-                job.update(status="succeeded", progress="Completed", result=result)
-        except Exception as exc:
-            # Public HTTP errors are authored by our API; provider payloads are not exposed.
-            from fastapi import HTTPException
-            import logging
-            logging.getLogger(__name__).warning("Job %s failed (%s)", job_id, type(exc).__name__)
-            message = exc.detail if isinstance(exc, HTTPException) else "Operation failed; inspect server diagnostics and project status"
-            with _mutex:
-                job.update(status="failed", progress="Failed", error=message)
-        finally:
-            with _mutex:
-                _active.pop(project_id, None)
-            lock.release()
-    try:
-        _executor.submit(execute)
-    except Exception:
-        with _mutex:
-            _active.pop(project_id, None)
-            _jobs.pop(job_id, None)
-        lock.release()
-        raise
-    return initial
+            check_cancelled();task_store.update(job['id'],status='running',started_at=task_store.now())
+            task_store.event(job['id'],'started')
+            if serialize:
+                with project_guard(project_id):result=function()
+            else:result=function()
+            check_cancelled()
+            state='failed' if isinstance(result,dict) and result.get('returncode',0)!=0 else 'succeeded'
+            task_store.update(job['id'],status=state,result=result,finished_at=task_store.now())
+            task_store.event(job['id'],state)
+        except JobCancelled:
+            task_store.update(job['id'],status='cancelled',finished_at=task_store.now(),error='Stopped locally; verify provider outcome before retry')
+            task_store.event(job['id'],'cancelled')
+        except Exception:
+            # Exception bodies may include URLs, keys or full provider content.
+            task_store.update(job['id'],status='failed',finished_at=task_store.now(),error='Operation failed; inspect the structured result and local diagnostics')
+            task_store.event(job['id'],'failed')
+        finally:_current.reset(token)
+    _executor.submit(run)
+    return job

@@ -16,6 +16,8 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 from src.project_context import DATA_DIR, CODE_DIR
 BASE_DIR = DATA_DIR
+from src.project_context import guard_mutating_cli
+guard_mutating_cli(BASE_DIR)
 
 
 def find_font(name, style="Regular"):

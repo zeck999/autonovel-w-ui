@@ -5,6 +5,9 @@ Reads each chapter, calls the LLM for a structured summary,
 and assembles into an outline that reflects the novel as-written.
 """
 import os
+from src.text_provider import post_messages as _provider_post_messages
+from src.narrative_contract import apply_contract as _provider_post_messages
+from src.narrative_contract import apply_contract
 import sys
 import json
 import re
@@ -13,10 +16,24 @@ from dotenv import load_dotenv
 
 from src.project_context import DATA_DIR, CODE_DIR
 BASE_DIR = DATA_DIR
+
+
+def post_messages(url, **kwargs):
+    kwargs['json'] = apply_contract(kwargs.get('json', {}), BASE_DIR)
+    return _provider_post_messages(url, **kwargs)
+
+
+
+def post_messages(url, **kwargs):
+    kwargs['json'] = apply_contract(kwargs.get('json', {}), BASE_DIR)
+    return _provider_post_messages(url, **kwargs)
+
+from src.project_context import guard_mutating_cli
+guard_mutating_cli(BASE_DIR)
 load_dotenv(CODE_DIR / ".env")
 
 JUDGE_MODEL = os.environ.get("AUTONOVEL_JUDGE_MODEL", "claude-sonnet-4-6")
-API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+API_KEY = (os.environ.get("AUTONOVEL_TEXT_API_KEY", "") if os.environ.get("AUTONOVEL_TEXT_PROVIDER") == "openai-compatible" else os.environ.get("ANTHROPIC_API_KEY", ""))
 API_BASE = os.environ.get("AUTONOVEL_API_BASE_URL", "https://api.anthropic.com")
 CHAPTERS_DIR = BASE_DIR / "chapters"
 
@@ -38,7 +55,7 @@ def call_model(prompt, max_tokens=1500):
         ),
         "messages": [{"role": "user", "content": prompt}],
     }
-    resp = httpx.post(f"{API_BASE}/v1/messages", headers=headers, json=payload, timeout=120)
+    resp = post_messages(f"{API_BASE}/v1/messages", headers=headers, json=payload, timeout=120)
     resp.raise_for_status()
     text = resp.json()["content"][0]["text"]
     # Extract JSON from response

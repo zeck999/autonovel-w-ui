@@ -68,9 +68,9 @@ export function renderProjects(container) {
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label" for="wiz-universe">Shared Universe (Optional)</label>
+                            <label class="form-label" for="wiz-universe">Univers (obligatoire)</label>
                             <select id="wiz-universe" class="form-control">
-                                <option value="">-- None (Standalone Project) --</option>
+                                <option value="">Créer automatiquement au nom du projet</option>
                                 ${state.universes.map(u => `<option value="${u.id}" ${wizardState.universe_id === u.id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
                             </select>
                         </div>
@@ -170,7 +170,7 @@ export function renderProjects(container) {
                             <p><strong>Protagonist:</strong> <span id="review-protagonist">${escapeHtml(wizardState.protagonist || '(Not specified)')}</span></p>
                             <p><strong>Conflict:</strong> <span id="review-conflict">${escapeHtml(wizardState.conflict || '(Not specified)')}</span></p>
                             <p><strong>World Setting:</strong> <span id="review-world">${escapeHtml(wizardState.world_setting || '(Not specified)')}</span></p>
-                            <p><strong>Universe ID:</strong> <span id="review-universe">${escapeHtml(wizardState.universe_id || 'Standalone')}</span></p>
+                            <p><strong>Universe ID:</strong> <span id="review-universe">${escapeHtml(wizardState.universe_id || 'Création automatique au nom du projet')}</span></p>
                         </div>
 
                         <div style="display: flex; justify-content: space-between; margin-top: 1.5rem;">
@@ -247,13 +247,13 @@ export function renderProjects(container) {
                                     <td><code>${escapeHtml(p.id)}</code></td>
                                     <td><strong>${escapeHtml(p.name)}</strong></td>
                                     <td>${escapeHtml(p.concept || '-')}</td>
-                                    <td>${escapeHtml(p.universe_id || 'None')}</td>
+                                    <td>${escapeHtml(p.universe_id || 'Migration requise')}</td>
                                     <td>
                                         <div style="display: flex; gap: 0.5rem;">
                                             <button class="btn btn-sm ${p.id === state.activeProjectId ? 'btn-primary' : ''}" data-action="select" data-id="${p.id}">
                                                 ${p.id === state.activeProjectId ? 'Active' : 'Select'}
                                             </button>
-                                            <button class="btn btn-sm btn-danger" data-action="delete" data-id="${p.id}">Delete</button>
+                                            ${p.publication_status === 'published' ? '<span class="badge">Publié · lecture seule</span>' : `<button class="btn btn-sm btn-danger" data-action="delete" data-id="${p.id}">Delete</button>`}
                                         </div>
                                     </td>
                                 </tr>

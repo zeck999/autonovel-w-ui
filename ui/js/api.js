@@ -18,7 +18,7 @@ async function authenticate() {
 }
 async function request(endpoint, options = {}, retryAuthentication = true) {
     const controller = new AbortController();
-    const { timeoutMs = 30000, ...fetchOptions } = options;
+    const { timeoutMs = 30000, asBlob = false, ...fetchOptions } = options;
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     try {
         const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -41,7 +41,7 @@ async function request(endpoint, options = {}, retryAuthentication = true) {
             error.status = response.status;
             throw error;
         }
-        return response.status === 204 ? null : await response.json();
+        return response.status === 204 ? null : await (asBlob ? response.blob() : response.json());
     } finally { clearTimeout(timeoutId); }
 }
 function pendingJobs() {
@@ -117,6 +117,27 @@ async function runOperation(endpoint, payload, onProgress) {
 }
 
 export const api = {
+    async estimateCoherence(projectId) { return request(`/projects/${encodeURIComponent(projectId)}/coherence/estimate`); },
+    async getCoherence(projectId) { return request(`/projects/${encodeURIComponent(projectId)}/coherence`); },
+    async reviewCoherence(projectId, rationale) { return runOperation(`/projects/${encodeURIComponent(projectId)}/coherence/review`, {rationale}); },
+    async analyzeCoherence(projectId, full = true) {
+        return runOperation(`/projects/${encodeURIComponent(projectId)}/coherence/analyze`, { full });
+    },
+    async acceptAssertions(projectId, analysisId, assertionIds) {
+        return request(`/projects/${encodeURIComponent(projectId)}/coherence/accept`, {method: 'POST', body: JSON.stringify({analysis_id: analysisId, assertion_ids: assertionIds})});
+    },
+    async getPublication(projectId) { return request(`/projects/${encodeURIComponent(projectId)}/publication`); },
+    async publishProject(projectId) {
+        return request(`/projects/${encodeURIComponent(projectId)}/publish`, {method: 'POST', body: JSON.stringify({confirmation: true})});
+    },
+    async getCanon(universeId) { return request(`/universes/${encodeURIComponent(universeId)}/canon`); },
+    async proposeProofread(projectId, payload) {
+        return runOperation(`/projects/${encodeURIComponent(projectId)}/proofread`, {...payload, confirmation: true});
+    },
+    async applyProofread(projectId, proposalId) {
+        return request(`/projects/${encodeURIComponent(projectId)}/proofread/apply`, {method: 'POST', body: JSON.stringify({proposal_id: proposalId, confirmation: true})});
+    },
+
     async listProjects() {
         return request('/projects');
     },
@@ -156,6 +177,36 @@ export const api = {
 
     async listProjectFiles(projectId) {
         return request(`/projects/${projectId}/files`);
+    },
+
+    async getStory(projectId) {
+        return request(`/projects/${encodeURIComponent(projectId)}/story`);
+    },
+
+    async saveStory(projectId, story, revision) {
+        return request(`/projects/${encodeURIComponent(projectId)}/story`, {
+            method: 'PUT', body: JSON.stringify({ story, expected_revision: revision })
+        });
+    },
+
+    async stepStory(projectId, step) {
+        return request(`/projects/${encodeURIComponent(projectId)}/story/step`, {
+            method: 'POST', body: JSON.stringify(step)
+        });
+    },
+
+    async getStoryGraph(projectId) {
+        return request(`/projects/${encodeURIComponent(projectId)}/story/graph`);
+    },
+
+    async previewStage(projectId, content) {
+        return request(`/projects/${encodeURIComponent(projectId)}/stage-preview`, {
+            method: 'POST', body: JSON.stringify({ content })
+        });
+    },
+
+    async getStageAsset(projectId, filename) {
+        return request(`/projects/${encodeURIComponent(projectId)}/stage-assets/${encodeURIComponent(filename)}`, { asBlob: true });
     },
 
     async getProjectFile(projectId, filename) {
@@ -206,6 +257,17 @@ export const api = {
         return request('/versioning/switch', {
             method: 'POST',
             body: JSON.stringify(payload)
+        });
+    },
+
+    async getVersioningStatus(projectId) {
+        return request(`/versioning/status?project_id=${encodeURIComponent(projectId)}`);
+    },
+
+    async restoreRevision(projectId, revision, confirmation = false) {
+        return request('/versioning/restore', {
+            method: 'POST',
+            body: JSON.stringify({ project_id: projectId, revision, confirmation })
         });
     },
 

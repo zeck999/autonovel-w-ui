@@ -1,3 +1,4 @@
+from src.text_provider import post_messages, api_key as text_api_key
 """
 src/api.py — FastAPI application exposing REST endpoints for Autonovel Web UI and harness.
 Covers multi-project management, shared universes, narrative versioning, and pipeline control,
@@ -13,6 +14,17 @@ import ipaddress
 from urllib.parse import urlsplit
 from src.security import safe_child, validate_id
 from src.jobs import submit_job, get_job, ProjectBusyError, project_guard
+from src import coherence, publication, canon
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app):
+    coherence.start_worker()
+    try:
+        yield
+    finally:
+        coherence.stop_worker()
+
 from src.projects import FileConflictError
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -28,9 +40,10 @@ from src.pipeline_adapter import get_pipeline_status, run_pipeline_phase, evalua
 from src.settings import get_api_keys_status, update_api_keys, verify_api_key
 
 app = FastAPI(
+    lifespan=lifespan,
     title="Autonovel API",
     description="Backend API for Autonovel Web UI, multi-project, shared universes, and pipeline orchestration.",
-    version="0.1.0"
+    version="0.3.0"
 )
 
 STATIC_UI = Path(__file__).resolve().parent.parent / "ui"
@@ -141,6 +154,98 @@ def api_get_project_file(project_id: str, filename: str):
         raise HTTPException(status_code=404, detail="File not found")
     return {"filename": filename, "content": content}
 
+from src import branch_graph, state_store
+
+
+def _story_data(project_id):
+    require_project(project_id)
+    directory = coherence.directory(project_id)
+    story, revision = state_store.read_story(directory)
+    return directory, story, revision, state_store.chapters(directory)
+
+
+def _story_response(directory, story, revision, chapters):
+    try:
+        publication.ensure_directory_editable(directory)
+    except ValueError:
+        editable = False
+    else:
+        editable = True
+    return dict(story=story.model_dump(), revision=revision, chapters=chapters, editable=editable)
+
+
+@app.get('/api/projects/{project_id}/story')
+def api_story(project_id: str):
+    return _story_response(*_story_data(project_id))
+
+
+@app.put('/api/projects/{project_id}/story')
+def api_save_story(project_id: str, payload: state_store.StorySave):
+    import fcntl
+
+    with project_guard(project_id):
+        require_project(project_id)
+        directory = coherence.directory(project_id)
+        publication.ensure_directory_editable(directory)
+        with safe_child(directory, '.generation.lock').open('a+') as lease:
+            try:
+                fcntl.flock(lease, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise ProjectBusyError('Une opération est en cours pour ce roman') from exc
+            publication.ensure_directory_editable(directory)
+            _, _, revision, chapters = _story_data(project_id)
+            if revision != payload.expected_revision:
+                raise FileConflictError('L’état narratif a changé ; rechargez-le avant de sauvegarder')
+            state_store.validate_story(payload.story, set(chapters))
+            data = payload.story.model_dump()
+            if len(json.dumps(data, ensure_ascii=False, indent=2).encode('utf-8')) > 1_000_000:
+                raise HTTPException(status_code=413, detail='État narratif trop volumineux')
+            canon.atomic_json(state_store.story_path(directory), data)
+            return _story_response(*_story_data(project_id))
+
+
+@app.post('/api/projects/{project_id}/story/step')
+def api_story_step(project_id: str, payload: state_store.StoryStep):
+    _, story, _, chapters = _story_data(project_id)
+    return state_store.step(story, set(chapters), payload)
+
+
+@app.get('/api/projects/{project_id}/story/graph')
+def api_story_graph(project_id: str):
+    directory, story, _, chapters = _story_data(project_id)
+    return dict(story=branch_graph.story_graph(story, chapters), history=branch_graph.revision_graph(directory))
+
+
+class StagePreviewPayload(BaseModel):
+    content: str
+
+
+@app.post('/api/projects/{project_id}/stage-preview')
+def api_stage_preview(project_id: str, payload: StagePreviewPayload):
+    from src.stage_parser import parse_stage
+
+    if len(payload.content) > 300_000:
+        raise HTTPException(status_code=413, detail='Chapitre trop long pour cet aperçu')
+    if not get_project(project_id):
+        raise HTTPException(status_code=404, detail='Project not found')
+    return parse_stage(payload.content)
+
+
+@app.get('/api/projects/{project_id}/stage-assets/{filename}')
+def api_stage_asset(project_id: str, filename: str):
+    from src.projects import PROJECTS_DIR
+    from src.stage_parser import ASSET, ASSET_TYPES
+
+    if not ASSET.fullmatch(filename) or not get_project(project_id):
+        raise HTTPException(status_code=404, detail='Image introuvable')
+    directory = safe_child(PROJECTS_DIR, validate_id(project_id))
+    assets = directory / 'stage-assets'
+    path = assets / filename
+    if assets.is_symlink() or path.is_symlink() or not path.is_file():
+        raise HTTPException(status_code=404, detail='Image introuvable')
+    return FileResponse(path, media_type=ASSET_TYPES[path.suffix], headers={'Cache-Control': 'private, no-store'})
+
+
 class FileSavePayload(BaseModel):
     content: str
     expected_content: Optional[str] = None
@@ -190,8 +295,7 @@ class BranchCreate(BaseModel):
 @app.post("/api/versioning/branches")
 def api_create_branch(payload: BranchCreate):
     require_project(payload.project_id)
-    with project_guard(payload.project_id):
-        success = create_branch(payload.branch_name, payload.project_id)
+    success = create_branch(payload.branch_name, payload.project_id)
     return {"status": "created" if success else "failed", "branch": payload.branch_name}
 
 class BranchSwitch(BaseModel):
@@ -201,8 +305,7 @@ class BranchSwitch(BaseModel):
 @app.post("/api/versioning/switch")
 def api_switch_branch(payload: BranchSwitch):
     require_project(payload.project_id)
-    with project_guard(payload.project_id):
-        success = switch_branch(payload.branch_name, payload.project_id)
+    success = switch_branch(payload.branch_name, payload.project_id)
     if not success:
         raise HTTPException(status_code=400, detail="Failed to switch branch")
     return {"status": "switched", "branch": payload.branch_name}
@@ -224,6 +327,7 @@ class PipelineRun(BaseModel):
 @app.post("/api/pipeline/run", response_model=Dict, status_code=202)
 def api_pipeline_run(payload: PipelineRun, request: Request):
     require_project(payload.project_id)
+    publication.ensure_editable(payload.project_id)
     if payload.max_cycles is not None and not 1 <= payload.max_cycles <= 6:
         raise HTTPException(status_code=422, detail="max_cycles must be between 1 and 6")
     return submit_job(payload.project_id, f"pipeline:{payload.phase}:{payload.max_cycles}",
@@ -243,12 +347,116 @@ def api_pipeline_evaluate(payload: PipelineEvaluate, request: Request):
                       lambda: evaluate_project(payload.project_id, payload.chapter_num), request.headers.get("Idempotency-Key"))
 
 
+# --- Universe coherence and irreversible publication ---
+class AnalyzePayload(BaseModel):
+    full: bool = True
+
+class ReviewIssuePayload(BaseModel):
+    rationale: str
+
+@app.post("/api/projects/{project_id}/coherence/review", status_code=202)
+def api_review_issue(project_id: str, payload: ReviewIssuePayload, request: Request):
+    require_project(project_id)
+    if not 10 <= len(payload.rationale.strip()) <= 4000:
+        raise ValueError('Provide a sourced rationale between 10 and 4000 characters')
+    path = coherence.directory(project_id)
+    with coherence._LOCK:
+        state = coherence._read(path)
+        state['review_rationale'] = payload.rationale.strip()
+        coherence._write(coherence._state_path(path), state)
+    coherence.request_analysis(project_id, True)
+    return submit_job(project_id, "coherence-review", lambda: coherence.analyze(project_id, True), request.headers.get('Idempotency-Key'), serialize=False)
+
+class AcceptAssertions(BaseModel):
+    analysis_id: str
+    assertion_ids: List[str]
+
+class ChangeUniversePayload(BaseModel):
+    universe_id: str
+
+@app.put("/api/projects/{project_id}/universe")
+def api_change_universe(project_id: str, payload: ChangeUniversePayload):
+    from src.projects import change_universe
+    require_project(project_id)
+    return change_universe(project_id, payload.universe_id)
+
+class PublishPayload(BaseModel):
+    confirmation: bool = False
+
+@app.get("/api/projects/{project_id}/coherence")
+def api_coherence_state(project_id: str):
+    require_project(project_id)
+    return coherence.get_state(project_id)
+
+@app.get("/api/projects/{project_id}/coherence/estimate")
+def api_coherence_estimate(project_id: str):
+    require_project(project_id)
+    return coherence.estimate(project_id)
+
+@app.post("/api/projects/{project_id}/coherence/analyze", status_code=202)
+def api_coherence_analyze(project_id: str, payload: AnalyzePayload, request: Request):
+    require_project(project_id)
+    coherence.request_analysis(project_id, payload.full)
+    return submit_job(project_id, "coherence:" + str(payload.full),
+                      lambda: coherence.analyze(project_id, payload.full), request.headers.get("Idempotency-Key"), serialize=False)
+
+@app.post("/api/projects/{project_id}/coherence/accept")
+def api_coherence_accept(project_id: str, payload: AcceptAssertions):
+    require_project(project_id)
+    publication.ensure_editable(project_id)
+    with project_guard(project_id):
+        return coherence.accept_proposals(project_id, payload.analysis_id, payload.assertion_ids)
+
+@app.get("/api/projects/{project_id}/publication")
+def api_publication_status(project_id: str):
+    require_project(project_id)
+    return publication.get_status(project_id)
+
+@app.post("/api/projects/{project_id}/publish")
+def api_publish(project_id: str, payload: PublishPayload):
+    require_project(project_id)
+    return publication.publish(project_id, payload.confirmation)
+
+class ProofreadPayload(BaseModel):
+    file_path: str
+    content: str
+    expected_content: str
+    confirmation: bool = False
+
+class ApplyProofreadPayload(BaseModel):
+    proposal_id: str
+    confirmation: bool = False
+
+@app.post("/api/projects/{project_id}/proofread", status_code=202)
+def api_proofread(project_id: str, payload: ProofreadPayload, request: Request):
+    from src import proofreading
+    require_project(project_id)
+    import hashlib
+    fingerprint = hashlib.sha256(payload.model_dump_json().encode()).hexdigest()
+    return submit_job(project_id, "proofread:" + fingerprint,
+                      lambda: proofreading.propose(project_id, payload.file_path, payload.content, payload.expected_content, payload.confirmation),
+                      request.headers.get("Idempotency-Key"))
+
+@app.post("/api/projects/{project_id}/proofread/apply")
+def api_proofread_apply(project_id: str, payload: ApplyProofreadPayload):
+    from src import proofreading
+    require_project(project_id)
+    return proofreading.apply(project_id, payload.proposal_id, payload.confirmation)
+
+@app.get("/api/universes/{universe_id}/canon")
+def api_universe_canon(universe_id: str):
+    return canon.get_registry(universe_id)
+
 # --- Settings Endpoints ---
 @app.get("/api/settings/keys", response_model=Dict)
 def api_get_settings_keys():
     return get_api_keys_status()
 
 class SettingsUpdate(BaseModel):
+    text_provider: Optional[str] = None
+    text_base_url: Optional[str] = None
+    text_model: Optional[str] = None
+    text_api_key: Optional[str] = None
     anthropic_api_key: Optional[str] = None
     elevenlabs_api_key: Optional[str] = None
     fal_key: Optional[str] = None
@@ -256,6 +464,10 @@ class SettingsUpdate(BaseModel):
 @app.put("/api/settings/keys", response_model=Dict)
 def api_update_settings_keys(payload: SettingsUpdate):
     updates = {}
+    for field in ("text_provider", "text_base_url", "text_model", "text_api_key"):
+        value = getattr(payload, field)
+        if value is not None:
+            updates["AUTONOVEL_" + field.upper()] = value
     if payload.anthropic_api_key is not None:
         updates["ANTHROPIC_API_KEY"] = payload.anthropic_api_key
     if payload.elevenlabs_api_key is not None:
@@ -286,6 +498,7 @@ class ChapterModifyPayload(BaseModel):
 @app.post("/api/projects/{project_id}/chapters/modify", response_model=Dict, status_code=202)
 def api_modify_chapter_ai(project_id: str, payload: ChapterModifyPayload, request: Request):
     require_project(project_id)
+    publication.ensure_editable(project_id)
     # Validate the file boundary and type before spending provider credits.
     from src.projects import PROJECTS_DIR
     from src.security import project_file
@@ -308,7 +521,7 @@ def _modify_chapter_proposal(project_id: str, payload: ChapterModifyPayload, ori
     import logging
     logger = logging.getLogger(__name__)
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    api_key = text_api_key()
     if not api_key or api_key.startswith("your-") or "your-" in api_key:
         logger.error("ERR_AI_MOD_KEY_MISSING: ANTHROPIC_API_KEY is not configured.")
         raise HTTPException(
@@ -344,6 +557,7 @@ EXISTING CHAPTER CONTENT:
 {f"WORLD BIBLE:\\n{world}" if world else ""}
 
 Return the complete modified chapter text now."""
+    user_prompt += state_store.prompt_context(project_dir, payload.file_path)
 
     headers = {
         "x-api-key": api_key,
@@ -353,7 +567,7 @@ Return the complete modified chapter text now."""
     }
 
     try:
-        resp = httpx.post(
+        resp = post_messages(
             f"{api_base}/v1/messages",
             headers=headers,
             json={
@@ -422,6 +636,24 @@ def api_get_latest_review(project_id: Optional[str] = None):
 # --- Static Files & SPA Fallback ---
 app.mount("/css", StaticFiles(directory=STATIC_UI / "css"), name="ui-css")
 app.mount("/js", StaticFiles(directory=STATIC_UI / "js"), name="ui-js")
+
+@app.get('/api/versioning/status')
+def api_versioning_status(project_id: str):
+    from src.versioning import get_status
+    return get_status(project_id)
+
+
+class RevisionRestore(BaseModel):
+    project_id: str
+    revision: str
+    confirmation: bool = False
+
+
+@app.post('/api/versioning/restore')
+def api_restore_revision(payload: RevisionRestore):
+    from src.versioning import restore_revision
+    return restore_revision(payload.project_id, payload.revision, payload.confirmation)
+
 
 @app.get("/{path:path}")
 def ui_spa(path: str):

@@ -1,15 +1,16 @@
+import os
 """Narrative Git repositories live inside projects, never in application code."""
 import json
 import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional
-from src.project_context import project_directory, narrative_git_dir
+from src.project_context import project_directory, narrative_git_dir, ensure_data_editable, notify_data_changed
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def _directory(project_id):
-    return project_directory(project_id, BASE_DIR / "projects")
+    return project_directory(project_id, Path(os.environ.get("AUTONOVEL_APP_DATA_DIR", BASE_DIR)) / "projects")
 
 
 def run_git_cmd(args: list[str], directory: Path) -> str:
@@ -21,13 +22,12 @@ def run_git_cmd(args: list[str], directory: Path) -> str:
 
 
 def _repository(project_id, initialize=False):
+    from src import narrative_history as history
     directory = _directory(project_id)
-    if initialize and not (directory / ".git").exists():
-        run_git_cmd(["init", "--initial-branch=main"], directory)
-        # Branch creation needs one commit, independent of user Git identity.
-        run_git_cmd(["-c", "user.name=Autonovel", "-c", "user.email=autonovel@localhost",
-                     "commit", "--allow-empty", "-m", "Initialize narrative history"], directory)
-    return narrative_git_dir(directory)
+    if initialize:
+        history.initialize(directory)
+    history.validate_repository(directory)
+    return directory
 
 
 def _branch(branch_name):
@@ -50,30 +50,63 @@ def list_branches(project_id: Optional[str] = None) -> List[str]:
 
 
 def create_branch(branch_name: str, project_id: Optional[str] = None) -> bool:
-    name = _branch(branch_name)
-    directory = _repository(project_id, initialize=True)
-    run_git_cmd(["switch", "-c", name], directory)
+    from src import narrative_history as history
+    directory = _directory(project_id)
+    with history.mutation_guard(directory, project_id):
+        new_repository = not (directory / '.git').exists()
+        history.initialize(directory)
+        if new_repository or not history.git(directory, 'ls-tree', '-r', '--name-only', 'HEAD'):
+            history.snapshot(directory, 'Initial narrative snapshot')
+        history.require_clean(directory)
+        history.git(directory, 'switch', '-c', _branch(branch_name))
     return True
 
 
 def switch_branch(branch_name: str, project_id: Optional[str] = None) -> bool:
-    name = _branch(branch_name)
-    run_git_cmd(["switch", name], _repository(project_id))
+    from src import narrative_history as history
+    directory = _directory(project_id)
+    with history.mutation_guard(directory, project_id):
+        history.require_clean(directory)
+        branch = _branch(branch_name)
+        names = history.git(directory, 'ls-tree', '-r', '--name-only', 'refs/heads/' + branch).splitlines()
+        if history.MANIFEST not in names or any(not history.allowed(name) for name in names):
+            raise ValueError('Target branch has no safe narrative snapshot')
+        for name in names:
+            from src.security import safe_child
+            safe_child(directory, name)
+        history.git(directory, 'switch', branch)
+        history.restore_progress(directory)
+        notify_data_changed(directory)
     return True
+
+
+def get_status(project_id):
+    from src import narrative_history as history
+    directory = _directory(project_id)
+    if not (directory / '.git').is_dir(): return {'branch': None, 'dirty': False}
+    return {'branch': history.git(directory, 'branch', '--show-current'), 'dirty': history.dirty(directory)}
+
+
+def restore_revision(project_id, ref, confirmation=False):
+    from src import narrative_history as history
+    if confirmation is not True: raise ValueError('Explicit restore confirmation required')
+    directory = _directory(project_id)
+    with history.mutation_guard(directory, project_id):
+        history.require_clean(directory)
+        target = history.revision(directory, ref)
+        history.rollback(directory, target)
+        commit = history.snapshot(directory, 'Restore narrative revision ' + target[:12])
+        notify_data_changed(directory)
+    return {'commit': commit}
 
 
 def get_revision_history(chapter_num: Optional[int] = None,
                          project_id: Optional[str] = None) -> List[Dict]:
+    from src import narrative_history as history
     directory = _directory(project_id)
-    results_file = directory / "results.tsv"
-    history = []
-    if results_file.exists():
-        lines = results_file.read_text(encoding="utf-8").splitlines()
-        if lines:
-            headers = lines[0].split("\t")
-            for line in lines[1:]:
-                row = dict(zip(headers, line.split("\t")))
-                if chapter_num is not None and f"{chapter_num}" not in row.get("description", ""):
-                    continue
-                history.append(row)
-    return list(reversed(history))
+    if not (directory / '.git').is_dir(): return []
+    args = ['log', '--format=%H%x09%s', '-100']
+    if chapter_num is not None: args += ['--', f'chapters/ch_{chapter_num:02d}.md']
+    return [{'commit': line.split('\t',1)[0], 'description': line.split('\t',1)[1],
+             'phase': '', 'score': '', 'word_count': '', 'status': 'snapshot'}
+            for line in history.git(directory, *args).splitlines()]

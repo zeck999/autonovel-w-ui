@@ -4,6 +4,9 @@ Draft a single chapter using the writer model.
 Usage: python draft_chapter.py 1
 """
 import os
+from src.text_provider import post_messages as _provider_post_messages
+from src.narrative_contract import apply_contract as _provider_post_messages
+from src.narrative_contract import apply_contract
 import re
 import sys
 from pathlib import Path
@@ -11,10 +14,24 @@ from dotenv import load_dotenv
 
 from src.project_context import DATA_DIR, CODE_DIR
 BASE_DIR = DATA_DIR
+
+
+def post_messages(url, **kwargs):
+    kwargs['json'] = apply_contract(kwargs.get('json', {}), BASE_DIR)
+    return _provider_post_messages(url, **kwargs)
+
+
+
+def post_messages(url, **kwargs):
+    kwargs['json'] = apply_contract(kwargs.get('json', {}), BASE_DIR)
+    return _provider_post_messages(url, **kwargs)
+
+from src.project_context import guard_mutating_cli
+guard_mutating_cli(BASE_DIR)
 load_dotenv(CODE_DIR / ".env")
 
 WRITER_MODEL = os.environ.get("AUTONOVEL_WRITER_MODEL", "claude-sonnet-4-6")
-API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+API_KEY = (os.environ.get("AUTONOVEL_TEXT_API_KEY", "") if os.environ.get("AUTONOVEL_TEXT_PROVIDER") == "openai-compatible" else os.environ.get("ANTHROPIC_API_KEY", ""))
 API_BASE = os.environ.get("AUTONOVEL_API_BASE_URL", "https://api.anthropic.com")
 CHAPTERS_DIR = BASE_DIR / "chapters"
 
@@ -31,7 +48,7 @@ def call_writer(prompt, max_tokens=16000):
         "max_tokens": max_tokens,
         "temperature": 0.8,
         "system": (
-            "You are a literary fiction writer drafting a fantasy novel chapter. "
+            "You are a literary fiction writer drafting a novel chapter. "
             "You write in third-person limited past tense, locked to one POV character. "
             "You follow the voice definition exactly. You hit every beat in the outline. "
             "You never use words from the banned list. You show, never tell emotions. "
@@ -41,7 +58,7 @@ def call_writer(prompt, max_tokens=16000):
         ),
         "messages": [{"role": "user", "content": prompt}],
     }
-    resp = httpx.post(f"{API_BASE}/v1/messages", headers=headers, json=payload, timeout=600)
+    resp = post_messages(f"{API_BASE}/v1/messages", headers=headers, json=payload, timeout=600)
     resp.raise_for_status()
     return resp.json()["content"][0]["text"]
 
@@ -155,6 +172,8 @@ PATTERNS TO AVOID (these have been flagged in previous chapters):
 Write the chapter now. Full text, beginning to end.
 """
 
+    from src.state_store import prompt_context
+    prompt += prompt_context(BASE_DIR, f'chapters/ch_{chapter_num:02d}.md')
     print(f"Drafting Chapter {chapter_num}...", file=sys.stderr)
     result = call_writer(prompt)
     

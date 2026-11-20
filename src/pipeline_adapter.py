@@ -7,7 +7,7 @@ import sys
 import threading
 from pathlib import Path
 from typing import Dict, Optional
-from src.project_context import execute, project_directory
+from src.project_context import execute, project_directory, ensure_data_editable, notify_data_changed, _narrative_fingerprint
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ PHASES = {
 
 
 def _project(project_id):
-    return project_directory(project_id, BASE_DIR / "projects")
+    return project_directory(project_id, Path(os.environ.get("AUTONOVEL_APP_DATA_DIR", BASE_DIR)) / "projects")
 
 
 def _lock(directory):
@@ -77,6 +77,9 @@ def _score(output):
 
 def _run(project_id, args, timeout, *, record_score=False):
     directory = _project(project_id)
+    if not record_score:
+        ensure_data_editable(directory)
+    before = _narrative_fingerprint(directory)
     lock = _lock(directory)
     if not lock.acquire(blocking=False):
         return {"error": "A task is already running for this project", "returncode": -1}
@@ -107,6 +110,8 @@ def _run(project_id, args, timeout, *, record_score=False):
         return {"error": "Operation timed out; subprocess group stopped", "returncode": -1}
     finally:
         lock.release()
+        if _narrative_fingerprint(directory) != before:
+            notify_data_changed(directory)
 
 
 def run_pipeline_phase(phase: str, project_id: Optional[str] = None,

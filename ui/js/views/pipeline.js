@@ -5,9 +5,17 @@
 import { store } from '../store.js';
 import { api } from '../api.js';
 
-export function renderPipeline(container) {
+export async function renderPipeline(container) {
+    const pid = store.state.activeProjectId;
+    if (!pid) { container.innerHTML = '<div class="card">Sélectionnez un projet avant de lancer le pipeline.</div>'; return; }
+    try {
+        const publication = await api.getPublication(pid);
+        if (publication.publication_status === 'published') {
+            container.innerHTML = '<div class="card"><div class="card-title">Roman publié · lecture seule</div><p>Le pipeline narratif est désactivé après publication.</p><a href="#/coherence">Consulter cohérence et canon</a></div>'; return;
+        }
+    } catch (error) { container.innerHTML = '<div class="card">Statut de publication indisponible. Pipeline bloqué.</div>'; return; }
+    if (pid !== store.state.activeProjectId) return;
     const state = store.state;
-    const pid = state.activeProjectId;
     const pipeline = state.pipelineStatus || {};
 
     const phases = [

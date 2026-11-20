@@ -7,6 +7,9 @@ The disagreements between readers are where editorial decisions live.
 Usage: python reader_panel.py
 """
 import os
+from src.text_provider import post_messages as _provider_post_messages
+from src.narrative_contract import apply_contract as _provider_post_messages
+from src.narrative_contract import apply_contract
 import sys
 import json
 import re
@@ -16,10 +19,22 @@ from dotenv import load_dotenv
 
 from src.project_context import DATA_DIR, CODE_DIR
 BASE_DIR = DATA_DIR
+
+
+def post_messages(url, **kwargs):
+    kwargs['json'] = apply_contract(kwargs.get('json', {}), BASE_DIR)
+    return _provider_post_messages(url, **kwargs)
+
+
+
+def post_messages(url, **kwargs):
+    kwargs['json'] = apply_contract(kwargs.get('json', {}), BASE_DIR)
+    return _provider_post_messages(url, **kwargs)
+
 load_dotenv(CODE_DIR / ".env")
 
 JUDGE_MODEL = os.environ.get("AUTONOVEL_JUDGE_MODEL", "claude-opus-4-6")
-API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+API_KEY = (os.environ.get("AUTONOVEL_TEXT_API_KEY", "") if os.environ.get("AUTONOVEL_TEXT_PROVIDER") == "openai-compatible" else os.environ.get("ANTHROPIC_API_KEY", ""))
 API_BASE = os.environ.get("AUTONOVEL_API_BASE_URL", "https://api.anthropic.com")
 
 READERS = {
@@ -39,7 +54,7 @@ READERS = {
     "genre_reader": {
         "name": "The Genre Reader",
         "system": (
-            "You are an avid fantasy reader who reads 50+ novels a year. "
+            "You are an avid genre reader who reads 50+ novels a year. "
             "You care about pacing, mystery, worldbuilding payoff, and whether "
             "you want to keep turning pages. You get bored by beautiful prose "
             "that doesn't GO anywhere. You notice when an investigation stalls, "
@@ -52,7 +67,7 @@ READERS = {
     "writer": {
         "name": "The Writer",
         "system": (
-            "You are a published fantasy author with 5 novels and a Hugo nomination. "
+            "You are a published fiction author with 5 novels and a Hugo nomination. "
             "You read as a craftsperson. You notice structure: where the beats fall, "
             "whether foreshadowing pays off, whether character arcs complete. You "
             "notice when technique shows versus when it disappears into the story. "
@@ -77,7 +92,7 @@ READERS = {
     },
 }
 
-READER_PROMPT = """You have just read a complete fantasy novel in summary form.
+READER_PROMPT = """You have just read a complete novel in summary form.
 The summaries include chapter-by-chapter events, opening and closing passages
 from each chapter, and key dialogue. The full novel is 72,422 words across
 24 chapters.
@@ -126,7 +141,7 @@ def call_reader(reader_key, arc_summary):
         "system": reader["system"],
         "messages": [{"role": "user", "content": READER_PROMPT.format(arc_summary=arc_summary)}],
     }
-    resp = httpx.post(f"{API_BASE}/v1/messages", headers=headers, json=payload, timeout=300)
+    resp = post_messages(f"{API_BASE}/v1/messages", headers=headers, json=payload, timeout=300)
     resp.raise_for_status()
     raw = resp.json()["content"][0]["text"]
     

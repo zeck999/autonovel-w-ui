@@ -15,7 +15,9 @@ import re
 import sys
 from pathlib import Path
 
-BASE = Path(__file__).resolve().parent
+from src.project_context import DATA_DIR, guard_mutating_cli
+BASE = DATA_DIR
+guard_mutating_cli(BASE)
 CHAPTERS_DIR = BASE / "chapters"
 EDIT_LOGS_DIR = BASE / "edit_logs"
 

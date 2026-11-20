@@ -24,6 +24,7 @@ import sys
 import shlex
 import shutil
 from src.project_context import execute, narrative_git_dir
+from src.narrative_history import initialize, snapshot, rollback, require_clean, restore_file
 from datetime import datetime
 from pathlib import Path
 
@@ -33,6 +34,8 @@ from pathlib import Path
 
 from src.project_context import DATA_DIR, CODE_DIR
 BASE_DIR = DATA_DIR
+from src.project_context import guard_mutating_cli, ensure_data_editable
+guard_mutating_cli(BASE_DIR)
 STATE_FILE = BASE_DIR / "state.json"
 RESULTS_FILE = BASE_DIR / "results.tsv"
 CHAPTERS_DIR = BASE_DIR / "chapters"
@@ -79,6 +82,7 @@ def default_state() -> dict:
 
 
 def save_state(state: dict):
+    ensure_data_editable(BASE_DIR)
     """Write state to state.json."""
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=2)
@@ -136,18 +140,16 @@ def uv_run(script: str, timeout: int = 600):
 
 
 def git_add_commit(message: str) -> str:
-    narrative_git_dir(BASE_DIR)
-    run_tool(["git", "add", "--", "."])
-    run_tool(["git", "-c", "user.name=Autonovel", "-c", "user.email=autonovel@localhost",
-              "commit", "-m", message, "--allow-empty"])
-    return run_tool(["git", "rev-parse", "--short", "HEAD"]).stdout.strip()
+    ensure_data_editable(BASE_DIR)
+    return snapshot(BASE_DIR, message)
 
 
 def git_reset_hard(ref: str = "HEAD~1"):
+    ensure_data_editable(BASE_DIR)
     narrative_git_dir(BASE_DIR)
     if ref not in ("HEAD", "HEAD~1"):
         raise ValueError("Unsupported narrative rollback")
-    run_tool(["git", "reset", "--hard", ref])
+    rollback(BASE_DIR, ref)
 
 
 def git_short_hash() -> str:
@@ -218,6 +220,7 @@ def get_total_chapters(state: dict) -> int:
 # ---------------------------------------------------------------------------
 
 def run_foundation(state: dict) -> dict:
+    ensure_data_editable(BASE_DIR)
     """
     Build planning documents (world, characters, outline, voice, canon).
     Loop until foundation_score > threshold or max iterations reached.
@@ -259,17 +262,20 @@ def run_foundation(state: dict) -> dict:
 
         # 3. Keep or discard
         if score > best_score:
-            commit_hash = git_add_commit(
-                f"foundation iter {i}: score {score} (lore {lore})")
-            log_result(commit_hash, "foundation", score, 0, "keep",
-                       f"Iteration {i}: score improved {best_score} -> {score}")
+            previous_best = best_score
             best_score = score
             state["foundation_score"] = score
             state["lore_score"] = lore
             save_state(state)
+            commit_hash = git_add_commit(
+                f"foundation iter {i}: score {score} (lore {lore})")
+            log_result(commit_hash, "foundation", score, 0, "keep",
+                       f"Iteration {i}: score improved {previous_best} -> {score}")
         else:
             step(f"Score did not improve ({score} <= {best_score}), discarding")
             git_reset_hard("HEAD")
+            state.clear()
+            state.update(load_state())
             log_result("discarded", "foundation", score, 0, "discard",
                        f"Iteration {i}: no improvement ({score} <= {best_score})")
 
@@ -288,6 +294,8 @@ def run_foundation(state: dict) -> dict:
     state["current_focus"] = "chapter_drafting"
     save_state(state)
 
+    git_add_commit("Foundation complete: ready for drafting")
+
     banner(f"FOUNDATION COMPLETE — score {best_score}, {total} chapters planned")
     return state
 
@@ -297,6 +305,7 @@ def run_foundation(state: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 def run_drafting(state: dict) -> dict:
+    ensure_data_editable(BASE_DIR)
     """
     Draft each chapter sequentially, evaluating and retrying as needed.
     """
@@ -335,6 +344,8 @@ def run_drafting(state: dict) -> dict:
             step(f"Chapter {ch} score: {score}")
 
             if score >= CHAPTER_THRESHOLD:
+                state["chapters_drafted"] = ch
+                save_state(state)
                 commit_hash = git_add_commit(
                     f"ch{ch:02d}: score {score}, {word_count}w")
                 log_result(commit_hash, f"ch{ch:02d}", score, word_count,
@@ -348,8 +359,8 @@ def run_drafting(state: dict) -> dict:
                 log_result("discarded", f"ch{ch:02d}", score, word_count,
                            "discard", f"Chapter {ch} attempt {attempt}")
                 # Remove the bad chapter file so next attempt starts fresh
-                if ch_file.exists():
-                    run_tool(["git", "restore", "--", f"chapters/ch_{ch:02d}.md"], check=False)
+                if ch_file.exists() and attempt < MAX_CHAPTER_ATTEMPTS:
+                    restore_file(BASE_DIR, f"chapters/ch_{ch:02d}.md", "HEAD")
 
         if not drafted:
             step(f"WARNING: Chapter {ch} failed all {MAX_CHAPTER_ATTEMPTS} attempts, "
@@ -358,6 +369,8 @@ def run_drafting(state: dict) -> dict:
             ch_file = CHAPTERS_DIR / f"ch_{ch:02d}.md"
             if ch_file.exists():
                 word_count = len(ch_file.read_text().split())
+                state["chapters_drafted"] = ch
+                save_state(state)
                 commit_hash = git_add_commit(
                     f"ch{ch:02d}: best-effort after {MAX_CHAPTER_ATTEMPTS} attempts")
                 log_result(commit_hash, f"ch{ch:02d}", "?", word_count,
@@ -371,6 +384,8 @@ def run_drafting(state: dict) -> dict:
     state["chapters_drafted"] = total
     state["revision_cycle"] = 0
     save_state(state)
+
+    git_add_commit("Drafting complete: ready for revision")
 
     total_words = count_words_in_chapters()
     banner(f"DRAFTING COMPLETE — {total} chapters, {total_words} words")
@@ -446,6 +461,7 @@ def parse_panel_consensus(panel_path: Path) -> list[dict]:
 
 
 def run_revision(state: dict, max_cycles: int = MAX_REVISION_CYCLES) -> dict:
+    ensure_data_editable(BASE_DIR)
     """
     Revision phase: adversarial editing, reader panel, targeted revisions.
     """
@@ -551,6 +567,9 @@ def run_revision(state: dict, max_cycles: int = MAX_REVISION_CYCLES) -> dict:
             else:
                 step(f"Revision made it worse ({post_score} < {pre_score}), reverting")
                 git_reset_hard("HEAD")
+                state.clear()
+                state.update(load_state())
+                state["revision_cycle"] = cycle
                 log_result("reverted", f"rev-ch{ch_num:02d}", post_score,
                            word_count, "discard",
                            f"Cycle {cycle}: {question} regressed {pre_score}->{post_score}")
@@ -567,6 +586,10 @@ def run_revision(state: dict, max_cycles: int = MAX_REVISION_CYCLES) -> dict:
         total_words = count_words_in_chapters()
         step(f"Novel score: {novel_score}  (prev: {prev_score}, words: {total_words})")
 
+        # Capture progression alongside the evaluated manuscript, not one commit late.
+        state["novel_score"] = novel_score
+        state["revision_cycle"] = cycle
+        save_state(state)
         # Commit cycle results
         commit_hash = git_add_commit(
             f"revision cycle {cycle} complete: novel_score {novel_score}")
@@ -670,6 +693,8 @@ def run_revision(state: dict, max_cycles: int = MAX_REVISION_CYCLES) -> dict:
     state["current_focus"] = "export"
     save_state(state)
 
+    git_add_commit("Revision complete: ready for export")
+
     banner(f"REVISION COMPLETE — {state.get('revision_cycle', 0)} cycles, "
            f"novel_score {state.get('novel_score', 0)}")
     return state
@@ -680,6 +705,7 @@ def run_revision(state: dict, max_cycles: int = MAX_REVISION_CYCLES) -> dict:
 # ---------------------------------------------------------------------------
 
 def run_export(state: dict) -> dict:
+    ensure_data_editable(BASE_DIR)
     """
     Build final deliverables: outline, arc summary, manuscript, PDF.
     """
@@ -740,12 +766,8 @@ def run_export(state: dict) -> dict:
     else:
         step("typeset/build_tex.py not found, skipping LaTeX")
 
-    # 6. Final commit
-    commit_hash = git_add_commit("export: manuscript, outline, arc summary, PDF")
+    # Export artifacts remain outside narrative history; record progression only.
     total_words = count_words_in_chapters()
-    log_result(commit_hash, "export", state.get("novel_score", "?"),
-               total_words, "export", "Final export")
-
     state["exports"] = {"manuscript": "manuscript.md",
         "pdf_available": (BASE_DIR / "typeset" / "novel.pdf").exists(),
         "epub_available": False, "audiobook_available": False,
@@ -754,6 +776,9 @@ def run_export(state: dict) -> dict:
     state["current_focus"] = "done"
     save_state(state)
 
+    commit_hash = git_add_commit("Export complete: narrative progression")
+    log_result(commit_hash, "export", state.get("novel_score", "?"),
+               total_words, "export", "Export completed; artifacts stored separately")
     banner(f"EXPORT COMPLETE — {len(chapter_files)} chapters, {total_words} words")
     return state
 
@@ -763,15 +788,15 @@ def run_export(state: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 def run_pipeline(args):
+    ensure_data_editable(BASE_DIR)
     """Run the full pipeline or a specific phase."""
 
     # Refuse legacy root execution: never stage/reset application source.
     if BASE_DIR.resolve() == CODE_DIR.resolve():
         raise ValueError("Set AUTONOVEL_PROJECT_DIR to a dedicated novel directory")
     BASE_DIR.mkdir(parents=True, exist_ok=True)
-    if not (BASE_DIR / ".git").exists():
-        run_tool(["git", "init", "--initial-branch=main"])
-        git_add_commit("Initialize narrative baseline")
+    initialize(BASE_DIR)
+    require_clean(BASE_DIR)
     narrative_git_dir(BASE_DIR)
     for name in ("voice.md", "CRAFT.md", "ANTI-SLOP.md", "ANTI-PATTERNS.md", "MYSTERY.md"):
         target = BASE_DIR / name
@@ -847,6 +872,8 @@ def run_pipeline(args):
 
     elapsed = datetime.now() - start_time
     hours = elapsed.total_seconds() / 3600
+
+    git_add_commit("Export complete")
 
     banner("PIPELINE COMPLETE")
     print(f"  Time:       {hours:.1f} hours")

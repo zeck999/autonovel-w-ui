@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-seed.py -- Generate fantasy novel seed concepts.
+seed.py -- Generate novel seed concepts.
 
 Usage:
   uv run python seed.py              # Generate 10 concepts, pick one
@@ -11,16 +11,33 @@ Usage:
 import argparse
 import json
 import os
+from src.text_provider import post_messages as _provider_post_messages
+from src.narrative_contract import apply_contract as _provider_post_messages
+from src.narrative_contract import apply_contract
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
 from src.project_context import DATA_DIR, CODE_DIR
 BASE_DIR = DATA_DIR
+
+
+def post_messages(url, **kwargs):
+    kwargs['json'] = apply_contract(kwargs.get('json', {}), BASE_DIR)
+    return _provider_post_messages(url, **kwargs)
+
+
+
+def post_messages(url, **kwargs):
+    kwargs['json'] = apply_contract(kwargs.get('json', {}), BASE_DIR)
+    return _provider_post_messages(url, **kwargs)
+
+from src.project_context import guard_mutating_cli
+guard_mutating_cli(BASE_DIR)
 load_dotenv(CODE_DIR / ".env")
 
 WRITER_MODEL = os.environ.get("AUTONOVEL_WRITER_MODEL", "claude-sonnet-4-6-20250217")
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+ANTHROPIC_API_KEY = (os.environ.get("AUTONOVEL_TEXT_API_KEY", "") if os.environ.get("AUTONOVEL_TEXT_PROVIDER") == "openai-compatible" else os.environ.get("ANTHROPIC_API_KEY", ""))
 API_BASE_URL = os.environ.get("AUTONOVEL_API_BASE_URL", "https://api.anthropic.com")
 ANTHROPIC_BETA = "context-1m-2025-08-07"
 
@@ -38,7 +55,7 @@ def call_writer(prompt, max_tokens=4000):
         "max_tokens": max_tokens,
         "temperature": 1.0,  # high temp for creative diversity
         "system": (
-            "You are a fantasy novelist with deep knowledge of the genre's "
+            "You are a novelist with deep knowledge of the genre's "
             "best works -- Tolkien, Le Guin, Rothfuss, Wolfe, Jemisin, Peake, "
             "Susanna Clarke, Andrew Peterson, Sofia Samatar. You generate "
             "novel concepts that are SPECIFIC, SURPRISING, and STRUCTURALLY "
@@ -47,7 +64,7 @@ def call_writer(prompt, max_tokens=4000):
         ),
         "messages": [{"role": "user", "content": prompt}],
     }
-    resp = httpx.post(
+    resp = post_messages(
         f"{API_BASE_URL}/v1/messages",
         headers=headers,
         json=payload,
@@ -57,7 +74,7 @@ def call_writer(prompt, max_tokens=4000):
     return resp.json()["content"][0]["text"]
 
 
-GENERATE_PROMPT = """Generate {count} fantasy novel seed concepts. Each should be
+GENERATE_PROMPT = """Generate {count} novel seed concepts. Each should be
 a complete premise you could build a novel from.
 
 For EACH concept, provide:
@@ -95,7 +112,7 @@ DO NOT generate:
   - Love triangles as the central plot
 """
 
-RIFF_PROMPT = """I have a seed idea for a fantasy novel:
+RIFF_PROMPT = """I have a seed idea for a novel:
 
 "{idea}"
 
@@ -125,7 +142,7 @@ def main():
     args = parser.parse_args()
 
     if not ANTHROPIC_API_KEY:
-        print("ERROR: Set ANTHROPIC_API_KEY in .env first")
+        print("ERROR: Configure the text provider API key first")
         sys.exit(1)
 
     if args.riff:

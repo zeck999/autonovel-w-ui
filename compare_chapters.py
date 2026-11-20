@@ -8,6 +8,9 @@ Usage: python compare_chapters.py          # full tournament
        python compare_chapters.py 1 10     # single matchup
 """
 import os
+from src.text_provider import post_messages as _provider_post_messages
+from src.narrative_contract import apply_contract as _provider_post_messages
+from src.narrative_contract import apply_contract
 import sys
 import json
 import re
@@ -18,10 +21,22 @@ from dotenv import load_dotenv
 
 from src.project_context import DATA_DIR, CODE_DIR
 BASE_DIR = DATA_DIR
+
+
+def post_messages(url, **kwargs):
+    kwargs['json'] = apply_contract(kwargs.get('json', {}), BASE_DIR)
+    return _provider_post_messages(url, **kwargs)
+
+
+
+def post_messages(url, **kwargs):
+    kwargs['json'] = apply_contract(kwargs.get('json', {}), BASE_DIR)
+    return _provider_post_messages(url, **kwargs)
+
 load_dotenv(CODE_DIR / ".env")
 
 JUDGE_MODEL = os.environ.get("AUTONOVEL_JUDGE_MODEL", "claude-opus-4-6")
-API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+API_KEY = (os.environ.get("AUTONOVEL_TEXT_API_KEY", "") if os.environ.get("AUTONOVEL_TEXT_PROVIDER") == "openai-compatible" else os.environ.get("ANTHROPIC_API_KEY", ""))
 API_BASE = os.environ.get("AUTONOVEL_API_BASE_URL", "https://api.anthropic.com")
 CHAPTERS_DIR = BASE_DIR / "chapters"
 
@@ -44,7 +59,7 @@ def call_judge(prompt, max_tokens=4000):
         ),
         "messages": [{"role": "user", "content": prompt}],
     }
-    resp = httpx.post(f"{API_BASE}/v1/messages", headers=headers, json=payload, timeout=300)
+    resp = post_messages(f"{API_BASE}/v1/messages", headers=headers, json=payload, timeout=300)
     resp.raise_for_status()
     return resp.json()["content"][0]["text"]
 
@@ -75,7 +90,7 @@ def parse_json(text):
                     return json.loads(text[start:i+1], strict=False)
         return json.loads(text[start:], strict=False)
 
-COMPARE_PROMPT = """Compare these two chapters from the same fantasy novel.
+COMPARE_PROMPT = """Compare these two chapters from the same novel.
 Both are first drafts. Pick the BETTER one. You MUST pick a winner -- no ties.
 
 CHAPTER A (Ch {ch_a}):

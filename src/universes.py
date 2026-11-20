@@ -11,7 +11,7 @@ from typing import List, Dict, Optional
 from pydantic import BaseModel
 from src.security import safe_child, validate_id
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(os.environ.get("AUTONOVEL_APP_DATA_DIR", Path(__file__).resolve().parent.parent)).resolve()
 UNIVERSES_DIR = BASE_DIR / "universes"
 
 class UniverseCreate(BaseModel):
@@ -130,6 +130,22 @@ def get_universe(universe_id: str) -> Optional[Dict]:
 def delete_universe(universe_id: str) -> bool:
     u_path = safe_child(UNIVERSES_DIR, validate_id(universe_id))
     if u_path.exists() and u_path.is_dir():
+        from src.projects import list_projects
+        if any(p.get('universe_id') == universe_id for p in list_projects()):
+            raise ValueError('Cannot delete a universe referenced by a novel')
+        from src.canon import get_registry
+        registry = get_registry(universe_id)
+        if registry['publications'] or registry['assertions']:
+            raise ValueError('Universe history cannot be deleted')
         shutil.rmtree(u_path)
         return True
     return False
+
+
+def ensure_universe(name: str, universe_id: Optional[str] = None) -> str:
+    """Explicit invalid selections are errors; omitted selections create distinct universes."""
+    if universe_id:
+        if get_universe(universe_id) is None:
+            raise ValueError("Selected universe does not exist")
+        return universe_id
+    return create_universe(name, "Automatically created for this novel")['id']

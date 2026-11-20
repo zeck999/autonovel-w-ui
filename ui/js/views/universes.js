@@ -63,7 +63,7 @@ export function renderUniverses(container) {
                                         <td>${escapeHtml(u.description || '-')}</td>
                                         <td><span class="badge">${linkedCount} projects</span></td>
                                         <td>
-                                            <button class="btn btn-sm btn-danger" data-delete-universe="${u.id}">Delete</button>
+                                            <button class="btn btn-sm btn-danger" data-delete-universe="${u.id}" ${linkedCount > 0 ? 'disabled title="Univers utilisé par un roman"' : ''}>Delete</button>
                                         </td>
                                     </tr>
                                 `;
@@ -95,7 +95,7 @@ export function renderUniverses(container) {
     container.querySelectorAll('[data-delete-universe]').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const uid = e.target.getAttribute('data-delete-universe');
-            if (confirm(`Delete universe ${uid}? Linked projects will remain intact.`)) {
+            if (confirm(`Supprimer l’univers inutilisé ${uid} ?`)) {
                 try {
                     await api.deleteUniverse(uid);
                     await store.refreshGlobalData();

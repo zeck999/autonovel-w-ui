@@ -22,6 +22,9 @@ Full pipeline:
   python gen_art.py all                      # style → curate → batch → vectorize
 """
 import os
+from src.text_provider import post_messages as _provider_post_messages
+from src.narrative_contract import apply_contract as _provider_post_messages
+from src.narrative_contract import apply_contract
 import sys
 import json
 import re
@@ -34,7 +37,21 @@ from dotenv import load_dotenv
 
 from src.project_context import DATA_DIR, CODE_DIR
 BASE_DIR = DATA_DIR
-load_dotenv(CODE_DIR / ".env", override=True)
+
+
+def post_messages(url, **kwargs):
+    kwargs['json'] = apply_contract(kwargs.get('json', {}), BASE_DIR)
+    return _provider_post_messages(url, **kwargs)
+
+
+
+def post_messages(url, **kwargs):
+    kwargs['json'] = apply_contract(kwargs.get('json', {}), BASE_DIR)
+    return _provider_post_messages(url, **kwargs)
+
+from src.project_context import guard_mutating_cli
+guard_mutating_cli(BASE_DIR)
+load_dotenv(CODE_DIR / ".env", override=False)
 
 FAL_KEY = os.environ.get("FAL_KEY", "")
 FAL_URL = "https://fal.run/fal-ai/nano-banana-2"
@@ -47,7 +64,7 @@ STYLE_FILE = ART_DIR / "visual_style.json"
 PICKS_FILE = ART_DIR / "picks.json"
 
 WRITER_MODEL = os.environ.get("AUTONOVEL_WRITER_MODEL", "claude-sonnet-4-6")
-ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+ANTHROPIC_KEY = (os.environ.get("AUTONOVEL_TEXT_API_KEY", "") if os.environ.get("AUTONOVEL_TEXT_PROVIDER") == "openai-compatible" else os.environ.get("ANTHROPIC_API_KEY", ""))
 ANTHROPIC_BASE = os.environ.get("AUTONOVEL_API_BASE_URL", "https://api.anthropic.com")
 
 
@@ -115,7 +132,7 @@ def download_image(url, dest_path):
 
 def call_claude(prompt, max_tokens=1500):
     import httpx
-    resp = httpx.post(
+    resp = post_messages(
         f"{ANTHROPIC_BASE}/v1/messages",
         headers={
             "x-api-key": ANTHROPIC_KEY,
@@ -171,7 +188,7 @@ def cmd_style(args):
     if outline.exists():
         title = outline.read_text().split("\n")[0].lstrip("# ").strip()
 
-    prompt = f"""You are an art director designing the visual identity for a fantasy novel.
+    prompt = f"""You are an art director designing the visual identity for a novel.
 
 NOVEL TITLE: {title}
 

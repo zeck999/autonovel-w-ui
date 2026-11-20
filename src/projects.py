@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from src.security import safe_child, validate_id, project_file
 from src.jobs import project_guard
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(os.environ.get("AUTONOVEL_APP_DATA_DIR", Path(__file__).resolve().parent.parent)).resolve()
 PROJECTS_DIR = BASE_DIR / "projects"
 
 class ProjectCreate(BaseModel):
@@ -79,10 +79,15 @@ def list_projects() -> List[Dict]:
             seed_file = p_dir / "seed.txt"
             if seed_file.exists() and not meta.get("concept"):
                 meta["concept"] = seed_file.read_text().strip()
+            from src.publication import get_status
+            meta.update(get_status(p_dir.name))
             projects.append(meta)
     return projects
 
 def create_project(name: str, concept: str, universe_id: Optional[str] = None) -> Dict:
+    from src.universes import ensure_universe
+    selected_universe = bool(universe_id)
+    universe_id = ensure_universe(name, universe_id)
     ensure_projects_dir()
     pid = slugify(name)
     # Ensure uniqueness
@@ -104,8 +109,8 @@ def create_project(name: str, concept: str, universe_id: Optional[str] = None) -
     seed_file = p_path / "seed.txt"
     seed_file.write_text(concept)
 
-    # If universe_id provided, link/copy initial shared universe files if available
-    if universe_id:
+    # Copy only explicitly selected universe context, not empty automatic scaffolds.
+    if selected_universe:
         universe_path = safe_child(BASE_DIR / "universes", validate_id(universe_id))
         if universe_path.exists():
             for fname in ["world.md", "characters.md", "canon.md"]:
@@ -164,6 +169,8 @@ def get_project(project_id: str) -> Optional[Dict]:
     seed_file = p_path / "seed.txt"
     if seed_file.exists() and not state.get("concept"):
         state["concept"] = seed_file.read_text().strip()
+    from src.publication import get_status
+    state.update(get_status(project_id))
     return state
 
 def delete_project(project_id: str) -> bool:
@@ -173,6 +180,10 @@ def delete_project(project_id: str) -> bool:
 
 def _delete_project(project_id: str) -> bool:
     p_path = safe_child(PROJECTS_DIR, validate_id(project_id))
+    if not p_path.exists():
+        return False
+    from src.publication import ensure_editable
+    ensure_editable(project_id)
     if p_path.exists() and p_path.is_dir():
         shutil.rmtree(p_path)
         return True
@@ -225,6 +236,8 @@ def wizard_suggest(field_key: str, current_parameters: Dict[str, str]) -> List[s
     ])
 
 def create_project_from_wizard(payload: WizardCreate) -> Dict:
+    from src.universes import ensure_universe
+    universe_id = ensure_universe(payload.name, payload.universe_id)
     ensure_projects_dir()
     pid = slugify(payload.name)
     p_path = PROJECTS_DIR / pid
@@ -294,8 +307,8 @@ def create_project_from_wizard(payload: WizardCreate) -> Dict:
     (p_path / "outline.md").write_text(outline_content, encoding="utf-8")
 
     # If universe_id provided, copy shared files
-    if payload.universe_id:
-        universe_path = safe_child(BASE_DIR / "universes", validate_id(payload.universe_id))
+    if universe_id:
+        universe_path = safe_child(BASE_DIR / "universes", validate_id(universe_id))
         if universe_path.exists():
             for fname in ["world.md", "characters.md", "canon.md"]:
                 u_file = universe_path / fname
@@ -312,7 +325,7 @@ def create_project_from_wizard(payload: WizardCreate) -> Dict:
         "protagonist": payload.protagonist,
         "conflict": payload.conflict,
         "world_setting": payload.world_setting,
-        "universe_id": payload.universe_id,
+        "universe_id": universe_id,
         "created_at": datetime.now().isoformat(),
         "phase": "foundation",
         "current_focus": "planning",
@@ -383,14 +396,20 @@ class FileConflictError(ValueError):
 
 def save_project_file(project_id: str, filename: str, content: str,
                       expected_content: Optional[str] = None) -> bool:
-    with project_guard(project_id):
-        p_path = safe_child(PROJECTS_DIR, validate_id(project_id))
+    from src import narrative_history as history
+    directory = safe_child(PROJECTS_DIR, validate_id(project_id))
+    with history.mutation_guard(directory, project_id):
+        from src.publication import ensure_editable
+        ensure_editable(project_id)
+        p_path = directory
         if not p_path.is_dir():
             return False
         f_path = project_file(p_path, filename)
         current = f_path.read_text(encoding="utf-8") if f_path.exists() else ""
         if expected_content is not None and current != expected_content:
             raise FileConflictError("File changed since it was loaded; reload before saving")
+        history.initialize(p_path)
+        history.snapshot(p_path, 'Preserve narrative before manual save')
         f_path.parent.mkdir(parents=True, exist_ok=True)
         import os
         import tempfile
@@ -401,4 +420,30 @@ def save_project_file(project_id: str, filename: str, content: str,
             os.replace(temporary, f_path)
         finally:
             Path(temporary).unlink(missing_ok=True)
-        return True
+        try:
+            history.snapshot(p_path, 'Save ' + filename)
+        except Exception as error:
+            from src.coherence import invalidate_project
+            invalidate_project(project_id)
+            raise ValueError('File saved, but narrative history failed; retry saving to recover') from error
+    from src.coherence import invalidate_project
+    invalidate_project(project_id)
+    return True
+
+
+def change_universe(project_id: str, universe_id: str) -> Dict:
+    from src.publication import ensure_editable
+    from src.universes import get_universe
+    from src.canon import atomic_json
+    with project_guard(project_id):
+        ensure_editable(project_id)
+        if get_universe(universe_id) is None:
+            raise ValueError("Selected universe does not exist")
+        directory = safe_child(PROJECTS_DIR, validate_id(project_id))
+        state_file = safe_child(directory, "state.json")
+        state = json.loads(state_file.read_text(encoding="utf-8"))
+        state['universe_id'] = universe_id
+        atomic_json(state_file, state)
+    from src.coherence import invalidate_project
+    invalidate_project(project_id)
+    return get_project(project_id)

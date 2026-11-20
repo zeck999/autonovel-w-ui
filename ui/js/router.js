@@ -8,7 +8,9 @@ import { renderProjects } from './views/projects.js';
 import { renderUniverses } from './views/universes.js';
 import { renderFiles } from './views/files.js';
 import { renderBranches } from './views/branches.js';
+import { renderStory } from './views/story.js';
 import { renderPipeline } from './views/pipeline.js';
+import { renderCoherence } from './views/coherence.js';
 import { renderSettings } from './views/settings.js';
 
 let currentHash = null;
@@ -21,8 +23,10 @@ const routes = {
     '#/universes': renderUniverses,
     '#/files': renderFiles,
     '#/branches': renderBranches,
+    '#/story': renderStory,
     '#/pipeline': renderPipeline,
     '#/settings': renderSettings,
+    '#/coherence': renderCoherence,
     '#/': renderDashboard
 };
 

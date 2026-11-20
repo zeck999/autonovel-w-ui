@@ -44,6 +44,45 @@ AUTONOVEL_PROJECT_DIR="$PWD/projects/my-novel" uv run python run_pipeline.py --p
 - PDF export requires a project-specific `typeset/novel.tex` and `tectonic`. The general export phase does not produce a final ePub or audiobook; historical cover tools retain demo-specific graphic settings. No paid generation or complete export was used to validate these changes.
 - API-key verification currently checks **format only**, not provider authentication. Provider/model selection is unchanged.
 
+### Aperçu de mise en scène
+
+Dans **Fichiers & Lore**, ouvre un chapitre Markdown, puis déplie **Aperçu de mise en scène** sous l’éditeur. L’aperçu suit le brouillon sans l’enregistrer. Utilise **Précédent** et **Suivant** pour parcourir les passages.
+
+```markdown
+[bg image="forest.png"]
+[emotion char="Elena" state="rire"]
+Elena arrive à la lisière du bois.
+
+[shake intensity="medium"]
+Un grondement la fait sursauter.
+```
+
+Place les images dans `projects/<id-du-roman>/stage-assets/` (par exemple `forest.png` et `Elena--rire.png`). Le décor accepte PNG, JPEG, WebP et GIF ; les portraits utilisent `personnage--expression.png`. Les identifiants acceptent lettres ASCII, chiffres, tirets et underscores. Écris chaque balise sur sa propre ligne. Décors et portraits persistent jusqu’à leur remplacement ; `shake` (`low`, `medium`, `high`) ne s’applique qu’au passage suivant. Les balises invalides sont signalées et conservées comme texte. L’aperçu affiche le texte sans interpréter le HTML du manuscrit.
+
+### État narratif et embranchements
+
+Dans **Parcours narratif**, sélectionne un roman et définis un chapitre de départ, les variables initiales, les valeurs imposées à l’entrée de certains chapitres et les choix. Sauvegarde avant de lancer la simulation ou de consulter le graphe. Voici un exemple à adapter aux chapitres existants :
+
+```json
+{
+  "start": "chapters/ch_01.md",
+  "variables": {"confiance": 2, "a_la_cle": false},
+  "overrides": {"chapters/ch_02.md": {"confiance": 3}},
+  "choices": [{
+    "id": "entrer",
+    "source": "chapters/ch_01.md",
+    "target": "chapters/ch_02.md",
+    "label": "Entrer dans la tour",
+    "conditions": [{"variable": "confiance", "op": "gte", "value": 2}],
+    "effects": {"a_la_cle": true}
+  }]
+}
+```
+
+Les valeurs peuvent être des booléens, des nombres ou du texte. Toutes les conditions d’un choix doivent être remplies : `eq` / `ne` comparent des valeurs du même type, `lt` / `lte` / `gt` / `gte` sont réservés aux nombres. Un choix applique ses effets, puis les valeurs imposées à l’entrée du chapitre de destination ont priorité. La simulation ne sauvegarde pas l’état de la partie.
+
+La configuration est propre au roman (`story.json`), commune à ses branches Git et en lecture seule après publication. La rédaction et la révision IA reçoivent les valeurs d’entrée définies par l’auteur et les choix sortants du chapitre, pas l’état d’une simulation. Le **graphe du récit** relie les chapitres par leurs choix ; l’**historique Git** montre séparément les révisions locales et leurs parents (150 révisions au maximum). Consulter les graphes ne change pas la branche active.
+
 ### Tests (no paid generation)
 
 ```bash
@@ -259,3 +298,126 @@ through this pipeline:
 - Blake Snyder's *Save the Cat*
 - Ursula K. Le Guin's "From Elfland to Poughkeepsie"
 - [slop-forensics](https://github.com/sam-paech/slop-forensics) and [EQ-Bench Slop Score](https://eqbench.com/slop-score.html)
+
+
+## Univers, cohérence et publication
+
+Chaque projet possède un univers : création automatique distincte au nom du projet
+si aucun univers n’est sélectionné. Pour migrer des données existantes hors ligne :
+
+```bash
+python -m src.migrate_universes --data-dir /path/to/application
+# Contrôler le dry-run, puis :
+python -m src.migrate_universes --data-dir /path/to/application --apply
+```
+
+La migration sauvegarde les métadonnées modifiées dans `.migration-backups/`,
+conserve un journal `.universe-migration.json`, est reprenable et ne fait aucun
+appel IA. Elle ne transforme pas les documents existants en canon.
+
+La vue **Cohérence & Canon** lance une première analyse manuelle (payante selon
+la configuration du fournisseur existant). Après son succès, les sauvegardes
+narratives activent une analyse incrémentale différée de dix secondes ; les
+sauvegardes proches sont regroupées. La file `.coherence/state.json` est durable.
+Un échec n’annule jamais le texte sauvegardé et exige une relance manuelle.
+L’analyse utilise le contexte du manuscrit et de l’univers ; elle n’envoie donc
+pas uniquement les passages modifiés. Les ajouts proposés sont à valider.
+
+Le registre `universes/<id>/.registry/` conserve des événements immuables :
+assertions sourcées, remplacements explicites de faits non canoniques,
+publications et corrections de forme. Une croyance erronée reste canonique en
+tant que croyance du personnage à cette époque, pas comme vérité objective.
+Les anciens fichiers Markdown d’univers sont conservés ; le registre/API est
+l’autorité pour les nouveaux apports. La vue `registry.md` est reconstruite à chaque nouvel événement ; elle ne remplace pas les documents historiques.
+
+Une analyse produit `.coherence/analyses/<id>.json`, un rapport Markdown versionné
+et `coherence_errors.md`. Elle vérifie les contradictions internes et avec les
+sources publiées. Ce rapport ne garantit pas l’absence absolue d’incohérence.
+Au-delà de 180 000 caractères de contexte, les sources sont découpées et
+comparées par paires : sections du roman entre elles et avec chaque portion de
+l’univers. Cela peut multiplier fortement les appels payants. Une limite de
+400 appels par analyse bloque explicitement les corpus trop grands ; aucun
+résumé approximatif ne remplace les sources canoniques. La couverture par paires
+ne prouve pas toutes les déductions possibles entre plusieurs sections. Un faux positif peut faire l’objet d’une révision argumentée : une nouvelle
+analyse complète réexamine les sources, sans dérogation ni suppression manuelle
+du blocage. Si la contradiction reste détectée, la publication demeure interdite.
+
+La publication demande confirmation irréversible, analyse complète récente,
+aucune contradiction et validation des propositions. Elle fige un original
+intégral et rend les apports actifs canoniques. Tout changement du manuscrit ou
+du registre invalide le contrôle. Une transaction journalisée permet la reprise.
+Le statut est indépendant des phases du pipeline. Suppression, génération,
+checkout et édition narrative sont interdits après publication.
+
+Les corrections de forme passent par un parcours séparé : comparaison avant/après,
+contrôle IA conservateur puis validation humaine. L’original est conservé et les
+corrections journalisées ; si le sens peut changer, la demande est refusée.
+Ce contrôle sémantique reste faillible : relire la comparaison avant confirmation.
+
+Exécuter un seul serveur/worker. Les générateurs CLI acquièrent une réservation
+partagée qui bloque la publication simultanée. Les droits système donnent
+évidemment toujours la capacité de modifier les fichiers hors application :
+les marqueurs ne constituent pas une protection contre l’administrateur local.
+
+## Fournisseur texte compatible OpenAI
+
+Les paramètres permettent de choisir `anthropic` ou `openai-compatible`.
+En mode compatible OpenAI, `AUTONOVEL_TEXT_BASE_URL` contient la base incluant
+`/v1`, `AUTONOVEL_TEXT_MODEL` le modèle/alias demandé et
+`AUTONOVEL_TEXT_API_KEY` la clé privée. Le modèle configuré est imposé à tous les
+appels texte (génération, évaluation, cohérence, corrections et réécriture).
+Aucun repli automatique sur un autre fournisseur ; images et audio restent séparés.
+L’alias `auto/smart` laisse le fournisseur choisir le modèle sous-jacent.
+Le bouton de vérification est local : il ne prouve pas l’authentification distante.
+
+Pour lancer le code d’un worktree avec les données existantes sans les copier :
+
+```bash
+AUTONOVEL_APP_DATA_DIR=/chemin/application \
+AUTONOVEL_LOCAL_CONFIG=/chemin/prive/text-provider.env \
+python serve_local.py
+```
+
+Le fichier de configuration privé doit être hors Git et accessible seulement à
+son propriétaire (0600). Le lancement écoute sur `127.0.0.1:8000` avec un worker.
+Il ne modifie pas le `.env` existant. Les scripts CLI héritent des variables du
+serveur ; pour les lancer séparément, fournir les mêmes variables texte.
+
+## Historique narratif
+
+Chaque roman possède son dépôt Git individuel. Un premier instantané conserve
+les documents courants ; chaque sauvegarde manuelle conserve ensuite le texte
+précédent et le nouveau texte. Les sauvegardes identiques ne créent pas de commit.
+Le pipeline utilise le même service de sélection, y compris pour ses annulations.
+
+Sont suivis uniquement `seed.txt`, `world.md`, `characters.md`, `outline.md`,
+`canon.md`, `voice.md`, `MYSTERY.md`, `chapters/ch_NN.md` et le manifeste
+`.narrative-progress.json` (phase, focus, scores, compteurs, itérations et dettes).
+`state.json` n’est pas suivi : la restauration fusionne seulement la progression,
+sans remplacer l’identité ni le rattachement d’univers. Les scores historiques
+ne sont pas une preuve de cohérence du manuscrit restauré.
+
+Les clés/configurations, fichiers techniques, verrous, files d’analyse, résultats
+d’évaluation et artefacts image/audio/export sont exclus. Le canon partagé,
+les publications, originaux publiés et corrections auditées ne sont jamais
+annulés par une branche. Une restauration invalide la cohérence ; une nouvelle
+analyse est nécessaire avant publication.
+
+La vue Versions montre la branche active et les commits réels. Une restauration
+confirmée ajoute un commit, sans supprimer les versions suivantes. Les changements
+de branche/restaurations refusent un manuscrit sale, une génération active et un
+roman publié. En cas de modification externe, enregistrer le document concerné
+pour conserver un instantané ; ne pas utiliser `git reset --hard`.
+Si le fichier a été enregistré mais Git échoue, l’API le signale explicitement :
+réessayer la sauvegarde pour reprendre l’historisation, sans réécrire le texte.
+
+Migration des brouillons existants (prévisualisation par défaut) :
+
+```bash
+python -m src.migrate_history /chemin/application
+python -m src.migrate_history /chemin/application --apply
+```
+
+La migration ne modifie aucun texte et ne reconstitue pas d’anciennes versions
+jamais conservées. Un dépôt suivant des fichiers hors périmètre est bloqué pour
+traitement manuel ; son historique n’est jamais réécrit automatiquement.

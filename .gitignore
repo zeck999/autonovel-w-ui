@@ -19,3 +19,9 @@ tmp/
 .pytest_cache/
 *.log
 .env.*
+
+# Local application runtime
+/.letta/
+/.runtime/
+/.generation.lock
+/tasks.sqlite3*

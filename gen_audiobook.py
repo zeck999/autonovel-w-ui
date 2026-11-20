@@ -16,11 +16,15 @@ import io
 import re
 import time
 import argparse
+import hashlib
+from src.artifacts import atomic_json, source_hash
 from pathlib import Path
 from dotenv import load_dotenv
 
 from src.project_context import DATA_DIR, CODE_DIR
 BASE_DIR = DATA_DIR
+from src.project_context import guard_mutating_cli
+guard_mutating_cli(BASE_DIR)
 load_dotenv(CODE_DIR / ".env", override=True)
 
 ELEVENLABS_KEY = os.environ.get("ELEVENLABS_API_KEY", "")

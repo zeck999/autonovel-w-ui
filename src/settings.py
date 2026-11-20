@@ -12,7 +12,34 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 ENV_FILE = BASE_DIR / ".env"
 ENV_EXAMPLE = BASE_DIR / ".env.example"
 
-SUPPORTED_KEYS = ["ANTHROPIC_API_KEY", "ELEVENLABS_API_KEY", "FAL_KEY"]
+SECRET_KEYS = ["ANTHROPIC_API_KEY", "ELEVENLABS_API_KEY", "FAL_KEY", "AUTONOVEL_TEXT_API_KEY"]
+TEXT_CONFIG_KEYS = ["AUTONOVEL_TEXT_PROVIDER", "AUTONOVEL_TEXT_BASE_URL", "AUTONOVEL_TEXT_MODEL"]
+SUPPORTED_KEYS = SECRET_KEYS + TEXT_CONFIG_KEYS
+
+
+def _read_env_vars() -> Dict[str, str]:
+    """Read settings only inside service calls; never return raw secret values."""
+    ensure_env_file()
+    values = {}
+    for line in ENV_FILE.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith('#') and '=' in line:
+            key, value = line.split('=', 1)
+            values[key.strip()] = value.strip().strip('"').strip("'")
+    return values
+
+
+def get_settings() -> Dict:
+    values = _read_env_vars()
+    def setting(key, default=''):
+        return values.get(key, os.environ.get(key, default))
+    key = setting('AUTONOVEL_TEXT_API_KEY')
+    return {
+        'text_provider': setting('AUTONOVEL_TEXT_PROVIDER', 'anthropic'),
+        'text_base_url': setting('AUTONOVEL_TEXT_BASE_URL'),
+        'text_model': setting('AUTONOVEL_TEXT_MODEL'),
+        'text_api_key': {'configured': bool(mask_key(key)), 'masked_value': mask_key(key)},
+    }
 
 def ensure_env_file():
     if not ENV_FILE.exists():
@@ -43,18 +70,26 @@ def get_api_keys_status() -> Dict[str, Dict]:
         pass
 
     result = {}
-    for key in SUPPORTED_KEYS:
+    for key in SECRET_KEYS:
         val = env_vars.get(key, os.environ.get(key, ""))
         is_configured = bool(val and not val.startswith("your-") and "your-" not in val)
         result[key] = {
             "configured": is_configured,
             "masked_value": mask_key(val) if is_configured else ""
         }
+    result.update(get_settings())
     return result
 
 def update_api_keys(updates: Dict[str, str]) -> bool:
     if any(k not in SUPPORTED_KEYS or any(c in v for c in "\r\n\x00") for k, v in updates.items()):
         raise ValueError("Invalid API key value")
+    if 'AUTONOVEL_TEXT_PROVIDER' in updates and updates['AUTONOVEL_TEXT_PROVIDER'] not in {'anthropic', 'openai-compatible'}:
+        raise ValueError('Unsupported text provider')
+    if updates.get('AUTONOVEL_TEXT_BASE_URL'):
+        from urllib.parse import urlsplit
+        url = urlsplit(updates['AUTONOVEL_TEXT_BASE_URL'])
+        if url.scheme not in {'http', 'https'} or not url.hostname or url.username or url.password or url.query or url.fragment:
+            raise ValueError('Invalid text provider URL')
     ensure_env_file()
     try:
         lines = ENV_FILE.read_text().splitlines()
@@ -108,7 +143,8 @@ def verify_api_key(provider: str, api_key: Optional[str] = None) -> Dict:
         key_map = {
             "anthropic": "ANTHROPIC_API_KEY",
             "elevenlabs": "ELEVENLABS_API_KEY",
-            "fal": "FAL_KEY"
+            "fal": "FAL_KEY",
+            "openai-compatible": "AUTONOVEL_TEXT_API_KEY"
         }
         env_key_name = key_map.get(provider.lower())
         if env_key_name:
@@ -124,7 +160,13 @@ def verify_api_key(provider: str, api_key: Optional[str] = None) -> Dict:
 
     prov = provider.lower()
     try:
-        if prov == "anthropic":
+        if prov == 'openai-compatible':
+            config = get_settings()
+            valid = bool(config['text_base_url'] and config['text_model'] and api_key.strip())
+            return {'success': valid,
+                    'message': 'Configuration locale renseignée ; aucune authentification ni requête au fournisseur effectuée.' if valid else 'URL, modèle et clé texte requis ; aucune requête effectuée.',
+                    'latency_ms': int((time.time() - start_time) * 1000)}
+        elif prov == "anthropic":
             if api_key.startswith("sk-ant-") or len(api_key) > 15:
                 latency = int((time.time() - start_time) * 1000) + 40
                 return {"success": True, "message": "Anthropic key format accepted (not authenticated with provider).", "latency_ms": latency}

@@ -4,13 +4,17 @@
 
 import { store } from '../store.js';
 import { api } from '../api.js';
+import { mountStagePreview } from '../stage-preview.js';
 import { canLeaveEditor, setNavigationGuard, clearNavigationGuard, draftKey, saveDraft, readDraft, canonicalChapterName } from '../editor-state.js';
 
 let renderSequence = 0;
+let disposeStage;
 window.addEventListener('autonovel-navigation', () => { renderSequence += 1; });
 
 export async function renderFiles(container) {
     const sequence = ++renderSequence;
+    disposeStage?.();
+    disposeStage = undefined;
     clearNavigationGuard();
     const state = store.state;
     const pid = state.activeProjectId;
@@ -29,6 +33,10 @@ export async function renderFiles(container) {
         return;
     }
 
+    let publication;
+    try { publication = await api.getPublication(pid); }
+    catch (error) { container.innerHTML = `<div class="card">Statut de publication indisponible : ${escapeHtml(error.message)}. Édition bloquée.</div>`; return; }
+    const published = publication.publication_status === 'published';
     let files = [];
     try {
         files = await api.listProjectFiles(pid);
@@ -55,13 +63,13 @@ export async function renderFiles(container) {
     if (sequence !== renderSequence || store.state.activeProjectId !== pid) return;
     let savedContent = fileContent;
     const storageKey = draftKey(pid, selectedFile);
-    const draft = readDraft(localStorage, storageKey);
+    const draft = published ? null : readDraft(localStorage, storageKey);
     if (draft && draft.content !== savedContent && confirm('Restaurer le brouillon local non sauvegardé ?')) fileContent = draft.content;
     const foundationFiles = files.filter(f => !f.name.startsWith('chapters/'));
     const chapterFiles = files.filter(f => f.name.startsWith('chapters/'));
 
     container.innerHTML = `
-        <div class="grid-2" style="grid-template-columns: 280px 1fr; gap: 1.5rem;">
+        <p><a href="#/coherence">Cohérence, canon et publication</a></p><div class="grid-2" style="grid-template-columns: 280px 1fr; gap: 1.5rem;">
             <!-- File List Sidebar -->
             <div class="card" style="height: fit-content;">
                 <div class="card-title">Fichiers du Projet</div>
@@ -109,14 +117,14 @@ export async function renderFiles(container) {
             <!-- File Editor Area -->
             <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <div class="card-title" style="margin: 0;" id="editor-title">Édition : ${escapeHtml(selectedFile)}</div>
+                    <div class="card-title" style="margin: 0;" id="editor-title">${published ? 'Publié · lecture seule :' : 'Édition :'} ${escapeHtml(selectedFile)}</div>
                     <div style="display: flex; gap: 0.75rem; align-items: center;">
                         <span id="save-status" style="font-size: 0.85rem; color: var(--text-muted);"></span>
-                        <button id="save-file-btn" class="btn btn-primary">Sauvegarder</button>
+                        <button id="save-file-btn" ${published ? 'disabled' : ''} class="btn btn-primary">Sauvegarder</button>
                     </div>
                 </div>
 
-                ${selectedFile.startsWith('chapters/') ? `
+                ${!published && selectedFile.startsWith('chapters/') ? `
                     <div id="ai-modifier-toolbar" style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-surface-hover); border: 1px solid var(--border-color); border-radius: 4px;">
                         <input type="text" id="ai-prompt-input" class="form-control" placeholder="Instruction IA (ex: Rendre le dialogue plus tendu, ajouter des détails sensoriels...)" style="flex: 1; font-size: 0.9rem;">
                         <button id="ai-modify-btn" class="btn btn-sm btn-primary" title="Modifier le chapitre avec l'IA">✨ Modifier avec l'IA</button>
@@ -125,16 +133,66 @@ export async function renderFiles(container) {
                 ` : ''}
 
                 <div class="form-group" style="margin-bottom: 0;">
-                    <textarea id="file-editor-textarea" class="form-control" style="font-family: monospace; font-size: 0.95rem; min-height: 500px; line-height: 1.5; resize: vertical;" placeholder="Contenu du fichier Markdown...">${escapeHtml(fileContent)}</textarea>
+                    <textarea id="file-editor-textarea" ${published ? 'readonly' : ''} class="form-control" style="font-family: monospace; font-size: 0.95rem; min-height: 500px; line-height: 1.5; resize: vertical;" placeholder="Contenu du fichier Markdown...">${escapeHtml(fileContent)}</textarea>
                 </div>
             </div>
         </div>
+        ${published ? `<div class="card"><div class="card-title">Correction de forme d’un roman publié</div><p>Uniquement typographie, orthographe, grammaire et mise en page, sans changement de sens. L’original canonique est conservé et chaque correction est journalisée.</p><textarea id="proofread-content" class="form-control" rows="12">${escapeHtml(fileContent)}</textarea><button id="proofread-propose" class="btn btn-secondary">Vérifier ma correction de forme</button><p id="proofread-status" role="status"></p><pre id="proofread-diff" style="white-space:pre-wrap"></pre><button id="proofread-apply" class="btn btn-primary" hidden>Confirmer et appliquer cette correction</button></div>` : ''}
     `;
 
+    if (published) container.querySelectorAll('#new-chapter-form, #new-custom-file-form').forEach(form => { form.hidden = true; form.querySelectorAll('input,button').forEach(input => { input.disabled = true; }); });
     const editor = container.querySelector('#file-editor-textarea');
+    if (editor && /^chapters\/[^/]+\.md$/.test(selectedFile)) {
+        const preview = document.createElement('details');
+        preview.className = 'stage-preview';
+        preview.innerHTML = `
+            <summary>Aperçu de mise en scène</summary>
+            <div class="stage-scene">
+                <div class="stage-background"></div>
+                <div class="stage-portraits"></div>
+            </div>
+            <div class="stage-prose"></div>
+            <div class="stage-controls">
+                <button type="button" class="btn stage-previous" disabled>Précédent</button>
+                <span class="stage-status" role="status"></span>
+                <button type="button" class="btn stage-next" disabled>Suivant</button>
+            </div>
+            <p class="stage-warnings" role="status"></p>`;
+        editor.after(preview);
+        disposeStage = mountStagePreview(preview, editor, pid, () => preview.isConnected && sequence === renderSequence);
+    }
     const isDirty = () => Boolean(editor && editor.value !== savedContent);
-    setNavigationGuard(() => !isDirty() || confirm('Modifications non sauvegardées. Quitter cet éditeur ? Le brouillon reste disponible sur cet appareil.'), isDirty);
-    editor?.addEventListener('input', () => saveDraft(localStorage, storageKey, editor.value, savedContent));
+    if (!published) setNavigationGuard(() => !isDirty() || confirm('Modifications non sauvegardées. Quitter cet éditeur ? Le brouillon reste disponible sur cet appareil.'), isDirty);
+    if (!published) editor?.addEventListener('input', () => saveDraft(localStorage, storageKey, editor.value, savedContent));
+    if (published) {
+        const input = container.querySelector('#proofread-content');
+        const check = container.querySelector('#proofread-propose');
+        const apply = container.querySelector('#proofread-apply');
+        const status = container.querySelector('#proofread-status');
+        let candidate = null;
+        input.addEventListener('input', () => { candidate = null; apply.hidden = true; });
+        check.onclick = async () => {
+            if (!confirm('Vérifier cette correction avec votre fournisseur IA ? Cette opération peut être payante. Aucune modification ne sera appliquée sans confirmation.')) return;
+            check.disabled = true; input.readOnly = true; status.textContent = 'Vérification de la forme et de la cohérence…';
+            try {
+                const result = await api.proposeProofread(pid, {file_path: selectedFile, content: input.value, expected_content: fileContent});
+                if (sequence !== renderSequence) return;
+                candidate = result;
+                container.querySelector('#proofread-diff').textContent = result.diff || `AVANT\n${fileContent}\n\nAPRÈS\n${input.value}`;
+                const allowed = result.allowed === true || result.approved === true || result.status === 'approved';
+                apply.hidden = !allowed || !result.proposal_id;
+                status.textContent = result.message || (allowed ? 'Comparez les deux versions avant de confirmer. Le contrôle IA n’est pas une garantie absolue.' : 'Correction refusée ou incertaine : aucune application possible.');
+            } catch (error) { status.textContent = error.message; }
+            finally { check.disabled = false; input.readOnly = false; }
+        };
+        apply.onclick = async () => {
+            if (!candidate || !confirm('Je confirme avoir comparé les versions et que la correction ne change ni sens ni fait narratif. Appliquer et journaliser ?')) return;
+            apply.disabled = true;
+            try { await api.applyProofread(pid, candidate.proposal_id); if (sequence === renderSequence) await renderFiles(container); }
+            catch (error) { status.textContent = error.message; apply.disabled = false; }
+        };
+    }
+
     container.querySelectorAll('[data-filename]').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             if (!canLeaveEditor()) return;
@@ -148,7 +206,7 @@ export async function renderFiles(container) {
     const textarea = document.getElementById('file-editor-textarea');
     const statusSpan = document.getElementById('save-status');
 
-    if (saveBtn && textarea) {
+    if (!published && saveBtn && textarea) {
         saveBtn.addEventListener('click', async () => {
             saveBtn.disabled = true;
             statusSpan.textContent = 'Enregistrement...';
@@ -220,7 +278,7 @@ export async function renderFiles(container) {
                         await api.saveProjectFile(pid, selectedFile, result.content, result.original_content ?? originalOnDisk);
                         savedContent = result.content;
                         textarea.value = result.content;
-                        saveDraft(localStorage, storageKey, textarea.value, savedContent);
+                        textarea.dispatchEvent(new Event('input'));
                         proposal.remove();
                         aiModifyStatus.textContent = 'Proposition appliquée et enregistrée.';
                     } catch (error) {
@@ -240,7 +298,7 @@ export async function renderFiles(container) {
     }
 
     const newChapterForm = document.getElementById('new-chapter-form');
-    if (newChapterForm) {
+    if (!published && newChapterForm) {
         newChapterForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!canLeaveEditor()) return;
@@ -258,7 +316,7 @@ export async function renderFiles(container) {
     }
 
     const newFileForm = document.getElementById('new-custom-file-form');
-    if (newFileForm) {
+    if (!published && newFileForm) {
         newFileForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!canLeaveEditor()) return;

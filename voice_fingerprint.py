@@ -13,6 +13,8 @@ from collections import Counter
 
 from src.project_context import DATA_DIR, CODE_DIR
 BASE_DIR = DATA_DIR
+from src.project_context import guard_mutating_cli
+guard_mutating_cli(BASE_DIR)
 CHAPTERS_DIR = BASE_DIR / "chapters"
 
 # The three vocabulary wells from voice.md

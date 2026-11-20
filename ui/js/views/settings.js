@@ -8,12 +8,31 @@ export async function renderSettings(container) {
     container.innerHTML = `
         <div class="view-header">
             <h2>Paramètres & Clés API IA</h2>
-            <p>Gérez vos clés API sécurisées pour Anthropic, ElevenLabs et Fal.ai.</p>
+            <p>Configurez le fournisseur texte et vos services image/audio. Les vérifications ci-dessous sont locales et ne prouvent pas l’authentification.</p>
         </div>
 
         <div class="card" style="max-width: 800px; margin: 0 auto; padding: 2rem;">
             <div id="settings-loading" style="text-align: center; color: #888;">Chargement des paramètres...</div>
             <form id="settings-form" style="display: none;">
+                <fieldset style="margin-bottom: 1.5rem;">
+                    <legend>Fournisseur de texte</legend>
+                    <label for="input-text-provider">Protocole</label>
+                    <select id="input-text-provider" class="form-control">
+                        <option value="anthropic">Anthropic</option>
+                        <option value="openai-compatible">Compatible OpenAI</option>
+                    </select>
+                    <label for="input-text-base-url">Adresse API texte</label>
+                    <input type="url" id="input-text-base-url" class="form-control" placeholder="http://serveur:port/v1" autocomplete="off">
+                    <label for="input-text-model">Modèle texte (ou alias du fournisseur)</label>
+                    <input type="text" id="input-text-model" class="form-control" placeholder="auto/smart" autocomplete="off">
+                    <label for="input-text">Clé API texte</label>
+                    <div style="display:flex; gap:0.5rem;">
+                        <input type="password" id="input-text" class="form-control" autocomplete="new-password" placeholder="Laisser vide pour conserver la clé">
+                        <button type="button" class="btn btn-sm" id="test-text">Vérifier la configuration locale</button>
+                    </div>
+                    <small id="status-text" style="display:block; margin-top:0.25rem;"></small>
+                    <p>Le même modèle s’applique aux rôles texte ; les services image/audio restent indépendants. Aucun appel IA n’est effectué par le bouton de vérification.</p>
+                </fieldset>
                 <div class="form-group" style="margin-bottom: 1.5rem;">
                     <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">ANTHROPIC_API_KEY (Claude)</label>
                     <div style="display: flex; gap: 0.5rem;">
@@ -57,6 +76,15 @@ export async function renderSettings(container) {
         const anthropicInput = document.getElementById('input-anthropic');
         const elevenlabsInput = document.getElementById('input-elevenlabs');
         const falInput = document.getElementById('input-fal');
+        const textInput = document.getElementById('input-text');
+        const textProvider = document.getElementById('input-text-provider');
+        const textBaseUrl = document.getElementById('input-text-base-url');
+        const textModel = document.getElementById('input-text-model');
+        textProvider.value = keysStatus.text_provider || 'anthropic';
+        textBaseUrl.value = keysStatus.text_base_url || '';
+        textModel.value = keysStatus.text_model || '';
+        const textKey = keysStatus.text_api_key || keysStatus.AUTONOVEL_TEXT_API_KEY;
+        document.getElementById('status-text').textContent = textKey?.configured ? `Clé conservée (${textKey.masked_value})` : 'Clé texte non configurée';
 
         const anthropicStatus = document.getElementById('status-anthropic');
         const elevenlabsStatus = document.getElementById('status-elevenlabs');
@@ -106,6 +134,18 @@ export async function renderSettings(container) {
             }
         }
 
+        document.getElementById('test-text').addEventListener('click', () => {
+            const status = document.getElementById('status-text');
+            const validProvider = ['anthropic', 'openai-compatible'].includes(textProvider.value);
+            let validUrl = !textBaseUrl.value.trim() && textProvider.value === 'anthropic';
+            try {
+                const url = new URL(textBaseUrl.value.trim());
+                validUrl = ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password && !url.search && !url.hash;
+            } catch (_) { /* Report invalid URL below. */ }
+            const valid = validProvider && validUrl && (textProvider.value === 'anthropic' || Boolean(textModel.value.trim())) && Boolean(textInput.value.trim() || textKey?.configured || (textProvider.value === 'anthropic' && keysStatus.ANTHROPIC_API_KEY?.configured));
+            status.textContent = valid ? 'Configuration locale renseignée ; aucune requête ni authentification effectuée.' : 'Configuration incomplète : vérifier protocole, URL, modèle et clé.';
+            status.style.color = valid ? '#4ade80' : '#f87171';
+        });
         document.getElementById('test-anthropic').addEventListener('click', () => handleTest('anthropic', 'input-anthropic', 'status-anthropic'));
         document.getElementById('test-elevenlabs').addEventListener('click', () => handleTest('elevenlabs', 'input-elevenlabs', 'status-elevenlabs'));
         document.getElementById('test-fal').addEventListener('click', () => handleTest('fal', 'input-fal', 'status-fal'));
@@ -116,7 +156,12 @@ export async function renderSettings(container) {
             msgEl.textContent = 'Enregistrement...';
             msgEl.style.color = '#fbbf24';
 
-            const payload = {};
+            const payload = {
+                text_provider: textProvider.value,
+                text_base_url: textBaseUrl.value.trim(),
+                text_model: textModel.value.trim(),
+            };
+            if (textInput.value.trim()) payload.text_api_key = textInput.value.trim();
             const anthVal = anthropicInput.value.trim();
             const elevVal = elevenlabsInput.value.trim();
             const falVal = falInput.value.trim();

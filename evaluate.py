@@ -16,6 +16,9 @@ to tune what "good" means. The agent treats it as a black box.
 import argparse
 import json
 import os
+from src.text_provider import post_messages as _provider_post_messages
+from src.narrative_contract import apply_contract as _provider_post_messages
+from src.narrative_contract import apply_contract
 import sys
 import glob
 import re
@@ -26,6 +29,18 @@ from pathlib import Path
 from src.project_context import DATA_DIR, CODE_DIR
 BASE_DIR = DATA_DIR
 
+
+def post_messages(url, **kwargs):
+    kwargs['json'] = apply_contract(kwargs.get('json', {}), BASE_DIR)
+    return _provider_post_messages(url, **kwargs)
+
+
+
+def post_messages(url, **kwargs):
+    kwargs['json'] = apply_contract(kwargs.get('json', {}), BASE_DIR)
+    return _provider_post_messages(url, **kwargs)
+
+
 # Load .env file if present
 from dotenv import load_dotenv
 load_dotenv(CODE_DIR / ".env")
@@ -33,7 +48,7 @@ load_dotenv(CODE_DIR / ".env")
 # Judge uses Opus 4.6 (harsh, critical). Writer uses Sonnet 4.6 (fast, long context).
 # Intentionally different to avoid self-congratulation.
 JUDGE_MODEL = os.environ.get("AUTONOVEL_JUDGE_MODEL", "claude-opus-4-6")
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+ANTHROPIC_API_KEY = (os.environ.get("AUTONOVEL_TEXT_API_KEY", "") if os.environ.get("AUTONOVEL_TEXT_PROVIDER") == "openai-compatible" else os.environ.get("ANTHROPIC_API_KEY", ""))
 API_BASE_URL = os.environ.get("AUTONOVEL_API_BASE_URL", "https://api.anthropic.com")
 
 # Beta header to unlock 1M context window on both Opus 4.6 and Sonnet 4.6
@@ -296,7 +311,7 @@ def call_judge(prompt, max_tokens=2000):
     }
 
     try:
-        resp = httpx.post(
+        resp = post_messages(
             f"{API_BASE_URL}/v1/messages",
             headers=headers,
             json=payload,
@@ -315,7 +330,7 @@ def call_judge(prompt, max_tokens=2000):
         print(f"[DEBUG] Response body: {err_text}", file=sys.stderr)
 
         if status_code == 401:
-            print(f"ERR_JUDGE_UNAUTHORIZED_401: Judge API authentication failed (401 Unauthorized). Please check ANTHROPIC_API_KEY in settings or environment.", file=sys.stderr)
+            print(f"ERR_JUDGE_UNAUTHORIZED_401: Judge API authentication failed (401 Unauthorized). Please check the configured text provider API key in settings or environment.", file=sys.stderr)
             raise RuntimeError("ERR_JUDGE_UNAUTHORIZED_401: Unauthorized API access")
         elif status_code == 429:
             print(f"ERR_JUDGE_RATE_LIMIT_429: Judge API rate limit exceeded (429).", file=sys.stderr)
@@ -384,7 +399,7 @@ def parse_json_response(text):
 
 # --- Foundation Evaluation ---
 
-FOUNDATION_PROMPT = """Evaluate these fantasy novel planning documents.
+FOUNDATION_PROMPT = """Evaluate these novel planning documents.
 
 SCORING CALIBRATION (read this before scoring anything):
 
@@ -560,7 +575,7 @@ def evaluate_foundation():
 
 # --- Chapter Evaluation ---
 
-CHAPTER_PROMPT = """Evaluate this fantasy novel chapter against the planning docs.
+CHAPTER_PROMPT = """Evaluate this novel chapter against the planning docs.
 
 SCORING CALIBRATION:
   9-10: Among the best chapters you've read in published fantasy. Name
@@ -748,7 +763,7 @@ def evaluate_chapter(chapter_num):
 
 # --- Full Novel Evaluation ---
 
-FULL_NOVEL_PROMPT = """Evaluate this complete fantasy novel holistically.
+FULL_NOVEL_PROMPT = """Evaluate this complete novel holistically.
 You have the planning docs and ALL chapter summaries with their individual scores.
 
 VOICE DEFINITION:
